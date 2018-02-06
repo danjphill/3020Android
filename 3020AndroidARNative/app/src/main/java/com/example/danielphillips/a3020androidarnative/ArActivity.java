@@ -6,15 +6,22 @@ package com.example.danielphillips.a3020androidarnative;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.media.Image;
+import android.net.wifi.WifiManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.PowerManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -26,6 +33,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.androidhiddencamera.CameraConfig;
 import com.androidhiddencamera.HiddenCameraActivity;
@@ -49,15 +57,35 @@ import com.wikitude.tracker.InitializationPose;
 import com.wikitude.tracker.InstantTrackerScenePickingCallback;
 import com.wikitude.tracker.InstantTrackingState;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.IntBuffer;
 
 import javax.microedition.khronos.opengles.GL10;
 
 public class ArActivity extends  HiddenCameraActivity implements InstantTrackerListener, ExternalRendering {
+    String ConnectionResult ;
+    Bitmap TutorialImage;
+    LinearLayout TutorialLinearLayout;
+    ImageView TutorialReload;
+    ImageView TutorialBack;
+    ImageView TutorialNext;
+    WebServer androidWebServer;
+    ProgressDialog mProgressDialog;
+    int current_index = -1;
+    String ResultURL = "";
+    String LocalResultPath = "";
+
+
 
     private static final String TAG = "InstantScenePicking";
 
@@ -67,7 +95,8 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
     private CustomSurfaceView mSurfaceView;
     private Driver mDriver;
     private GLRenderer mGLRenderer;
-    private ImageView ARView;
+
+
 
 
     private InstantTracker mInstantTracker;
@@ -80,6 +109,22 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+
+
+        mProgressDialog = new ProgressDialog(ArActivity.this);
+        mProgressDialog.setMessage("Downloading Result");
+        mProgressDialog.setIndeterminate(true);
+        mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        mProgressDialog.setCancelable(true);
+
+
+
+
+
+
+
         mWikitudeSDK = new WikitudeSDK(this);
         NativeStartupConfiguration startupConfiguration = new NativeStartupConfiguration();
         startupConfiguration.setLicenseKey(WikitudeSDKConstants.WIKITUDE_SDK_KEY);
@@ -119,6 +164,33 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
             }
         });
     }
+
+    public class ConnectAsync extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... params) {
+            Recognize recognizer = new Recognize();
+            ConnectionResult = recognizer.Connect(IPManager.GetIPAddress(ArActivity.this));
+            return "Executed";
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            ConnectionResult = ConnectionResult.replace("\n","");
+            Toast.makeText(ArActivity.this, ConnectionResult, Toast.LENGTH_SHORT).show();
+
+        }
+
+        @Override
+        protected void onPreExecute() {
+
+
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {}
+    }
+
 
     @Override
     public void onResume() {
@@ -165,12 +237,65 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
         viewHolder.addView(controls);
 
         mHeightSettingsLayout = (LinearLayout) findViewById(R.id.heightSettingsLayout);
-        ARView = (ImageView)findViewById(R.id.img_arview);
+
+        TutorialLinearLayout = (LinearLayout)findViewById(R.id.LinearLayoutTutorial);
+        TutorialReload = (ImageView)findViewById(R.id.TutorialReload);
+        TutorialBack = (ImageView)findViewById(R.id.TutorialBack);
+        TutorialNext = (ImageView)findViewById(R.id.TutorialNext);
+
+        TutorialBack.setVisibility(View.INVISIBLE);
+        TutorialReload.setVisibility(View.INVISIBLE);
+
+        TutorialBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                current_index--;
+                new RecognizeAsync().execute("");
+                if (current_index == 0 ){
+                    TutorialBack.setVisibility(View.INVISIBLE);
+                }
+                if (current_index < 3){
+                    TutorialNext.setVisibility(View.VISIBLE);
+                }
+
+                //TODO:Allow For Restarting The Tutorials
+
+
+            }
+        });
+
+        TutorialNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                current_index++;
+                new RecognizeAsync().execute("");
+                if (current_index == 3 ){
+                    TutorialNext.setVisibility(View.INVISIBLE);
+                }
+                if (current_index > 0){
+                    TutorialBack.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        TutorialReload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new RecognizeAsync().execute("");
+            }
+        });
+
+        //Test Connection
+        new ConnectAsync().execute("");
+
 
         final Button changeStateButton = (Button) findViewById(R.id.on_change_tracker_state);
         changeStateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View view) {
+                changeStateButton.setVisibility(View.GONE);
                 if (mRequestedTrackingState == InstantTrackingState.Initializing) {
                     if (mCurrentTrackingState == InstantTrackingState.Initializing) {
                         mRequestedTrackingState = InstantTrackingState.Tracking;
@@ -216,7 +341,130 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
         });
 
     }
+    public class RecognizeAsync extends AsyncTask<String, Void, String> {
 
+        @Override
+        protected String doInBackground(String... params) {
+
+            Recognize recognizer = new Recognize();
+            //http://10.42.0.188:5002/
+            try {
+                ResultURL = recognizer.recognizeImage(IPManager.GetIPAddress(ArActivity.this),"http://"+getDeviceIP()+":5002/");
+                Log.d("ResultURL",ResultURL);
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+            return "Executed";
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            androidWebServer.stop();
+            //ResultURL.replace("\n","");
+            //String ResultFullURL = "http://"+IPManager.GetIPAddress(ArActivity.this)+"/"+ResultURL;
+            BufferedReader bufReader = new BufferedReader(new StringReader(ResultURL));
+            String line=null;
+            try {
+                while( (line=bufReader.readLine()) != null )
+                {
+                    String[] CurrLine = line.split(",");
+                    Log.d(CurrLine[0] + " min_x : ",CurrLine[2]);
+                    Log.d(CurrLine[0] + " max_x : ",CurrLine[1]);
+                    Log.d(CurrLine[0] + " min_y : ",CurrLine[4]);
+                    Log.d(CurrLine[0] + " max_y : ",CurrLine[3]);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //String ResultFullURL = "http://10.42.0.1:5001/"+ResultURL;
+            //new ImageDownloader().execute(ResultFullURL);
+            //new ImageDownloader().execute(ResultFullURL);
+            //new DownloadFileFromURL().execute(ResultFullURL);
+
+            //Working Download Task
+//            final DownloadTask downloadTask = new DownloadTask(ArActivity.this);
+//            downloadTask.execute(ResultFullURL);
+//
+//            mProgressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+//                @Override
+//                public void onCancel(DialogInterface dialog) {
+//                    downloadTask.cancel(true);
+//                }
+//            });
+        }
+
+        @Override
+        protected void onPreExecute() {
+            //Create Folder for storing of recognized image
+            File mydir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/");
+            if(!mydir.exists())
+                mydir.mkdirs();
+            else
+                Log.d("error", "dir. already exists");
+            File tempImgdir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/Uploads/");
+            if(!tempImgdir.exists())
+                tempImgdir.mkdirs();
+            else
+                Log.d("error", "dir. already exists");
+
+            //File imgFile = new  File(Environment.getExternalStorageDirectory() + "/Download/"+Folders[current_index]+"/"+Folders[current_index]+"/"+Files[current_index]);
+            File imgFile = new File(tempImgdir, "temp_file.png");
+
+
+                try {
+
+                    Bitmap image = BitmapFactory.decodeResource(ArActivity.this.getResources(),
+                            R.mipmap._20171205_112855);
+                    OutputStream fOut = null;
+
+                    imgFile.createNewFile();
+                    fOut = new FileOutputStream(imgFile);
+
+// 100 means no compression, the lower you go, the stronger the compression
+                    image.compress(Bitmap.CompressFormat.PNG, 100, fOut);
+                    fOut.flush();
+                    fOut.close();
+
+
+
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+
+                }
+
+
+
+                if(imgFile.exists()){
+                if(TutorialImage!=null)
+                {
+                    TutorialImage.recycle();
+                    TutorialImage=null;
+                }
+                final BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = 128;
+                TutorialImage = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
+                //TutorialImageView.setImageBitmap(TutorialImage);
+                WebServer.path = imgFile.toString();
+
+
+            }else{
+                Log.e("ERROR","Not Found: "+imgFile.toString());
+            }
+
+            androidWebServer = new WebServer(getDeviceIP(),5002);
+            Log.d("WebServerIP",getDeviceIP());
+            try {
+                androidWebServer.start();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {}
+    }
     @Override
     public void onStateChanged(InstantTracker tracker, InstantTrackingState state) {
         Log.v(TAG, "onStateChanged");
@@ -284,7 +532,7 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                ARView.setImageBitmap(GLRenderer.Current);
+
 //stuff that updates ui
 
             }
@@ -409,5 +657,124 @@ public class ArActivity extends  HiddenCameraActivity implements InstantTrackerL
         mWikitudeSDK.onResume();
         mSurfaceView.onResume();
         mDriver.start();
+    }
+    String getDeviceIP(){
+
+        WifiManager wm = (WifiManager) getApplicationContext().getSystemService(getApplicationContext().WIFI_SERVICE);
+        String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
+        return ip;
+    }
+    private class DownloadTask extends AsyncTask<String, Integer, String> {
+
+        private Context context;
+        private PowerManager.WakeLock mWakeLock;
+
+        public DownloadTask(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        protected String doInBackground(String... sUrl) {
+            InputStream input = null;
+            OutputStream output = null;
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL(sUrl[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                // expect HTTP 200 OK, so we don't mistakenly save error report
+                // instead of the file
+                if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                    return "Server returned HTTP " + connection.getResponseCode()
+                            + " " + connection.getResponseMessage();
+                }
+
+                // this will be useful to display download percentage
+                // might be -1: server did not report the length
+                int fileLength = connection.getContentLength();
+
+                // download the file
+                input = connection.getInputStream();
+
+                String targetFileName = "temp_img" + ".png";//Change name and subname
+                String PATH = Environment.getExternalStorageDirectory() + "/ECNG3020Temp/";
+
+                LocalResultPath = PATH+targetFileName;
+                output = new FileOutputStream(LocalResultPath);
+                byte data[] = new byte[4096];
+                long total = 0;
+                int count;
+                while ((count = input.read(data)) != -1) {
+                    // allow canceling with back button
+                    if (isCancelled()) {
+                        input.close();
+                        return null;
+                    }
+                    total += count;
+                    // publishing the progress....
+                    if (fileLength > 0) // only if total length is known
+                        publishProgress((int) (total * 100 / fileLength));
+                    output.write(data, 0, count);
+                }
+            } catch (Exception e) {
+                return e.toString();
+            } finally {
+                try {
+                    if (output != null)
+                        output.close();
+                    if (input != null)
+                        input.close();
+                } catch (IOException ignored) {
+                }
+
+                if (connection != null)
+                    connection.disconnect();
+            }
+            return null;
+        }
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            // take CPU lock to prevent CPU from going off if the user
+            // presses the power button during download
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                    getClass().getName());
+            mWakeLock.acquire();
+            mProgressDialog.show();
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... progress) {
+            super.onProgressUpdate(progress);
+            // if we get here, length is known, now set indeterminate to false
+            mProgressDialog.setIndeterminate(false);
+            mProgressDialog.setMax(100);
+            mProgressDialog.setProgress(progress[0]);
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            mWakeLock.release();
+            mProgressDialog.dismiss();
+            if (result != null)
+                Toast.makeText(context,"Download error: "+result, Toast.LENGTH_LONG).show();
+            else{
+                Toast.makeText(context,"File downloaded", Toast.LENGTH_SHORT).show();
+                File imgFile = new File(LocalResultPath);
+                if (imgFile.exists()) {
+                    if (TutorialImage != null) {
+                        TutorialImage.recycle();
+                        TutorialImage = null;
+                    }
+                    final BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inSampleSize = 128;
+                    TutorialImage = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
+                    //TutorialImageView.setImageBitmap(TutorialImage);
+                }
+            }
+
+        }
     }
 }

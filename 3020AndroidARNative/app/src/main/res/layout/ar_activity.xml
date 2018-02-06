@@ -31,14 +31,39 @@
             android:layout_marginEnd="10dp"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"/>
-        <ImageView
-            android:id="@+id/img_arview"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:layout_gravity="center_horizontal"/>
 
     </LinearLayout>
+    <LinearLayout
+        android:id="@+id/LinearLayoutTutorial"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
+        android:background="@mipmap/bar"
+        android:orientation="horizontal">
 
+        <ImageView
+            android:id="@+id/TutorialBack"
+            android:layout_gravity="center"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginRight="30dp"
+            android:src="@mipmap/back"/>
+        <ImageView
+            android:id="@+id/TutorialReload"
+            android:layout_gravity="center"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@mipmap/reload"/>
+        <ImageView
+            android:id="@+id/TutorialNext"
+            android:layout_gravity="center"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginLeft="30dp"
+            android:src="@mipmap/forward"/>
+    </LinearLayout>
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

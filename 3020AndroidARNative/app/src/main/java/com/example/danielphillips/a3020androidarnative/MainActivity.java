@@ -35,10 +35,10 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this, i + "", Toast.LENGTH_SHORT).show();
                         break;
                     case 1:
-//                        Intent SettingsIntent = new Intent(MainActivity.this, Settings.class);
-//                        startActivity(SettingsIntent);
-//                        Toast.makeText(MainActivity.this, i+"", Toast.LENGTH_SHORT).show();
-//                        break;
+                        Intent SettingsIntent = new Intent(MainActivity.this, Settings.class);
+                        startActivity(SettingsIntent);
+                        Toast.makeText(MainActivity.this, i+"", Toast.LENGTH_SHORT).show();
+                        break;
                 }
             }
         });

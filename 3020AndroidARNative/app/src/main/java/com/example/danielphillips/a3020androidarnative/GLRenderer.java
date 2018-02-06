@@ -38,7 +38,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GLES20.glClearDepthf(1.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-        Current = takeScreenshot(1680,1080,unused);
+        //Current = takeScreenshot(1680,1080,unused);
         Log.d("GLRender","OnDrawFrame");
         if (mWikitudeRenderExtension != null) {
             // Will trigger a logic update in the SDK
