@@ -1,6 +1,7 @@
 package com.example.danielphillips.a3020androidarnative;
 
 import android.opengl.GLES20;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -112,7 +113,7 @@ public class OccluderCube extends Renderable{
 
         GLES20.glUniformMatrix4fv(mProjectionUniform, 1, false, this.projectionMatrix, 0);
         GLES20.glUniformMatrix4fv(mModelViewUniform, 1, false, this.viewMatrix, 0);
-
+        Log.d("OnFrameCube","1");
         float[] scaleMatrix = {
                 mXScale,    0.0f,       0.0f,       0.0f,
                 0.0f,       mYScale,    0.0f,       0.0f,

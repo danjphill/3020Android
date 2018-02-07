@@ -33,6 +33,16 @@
             android:layout_marginBottom="10dp"/>
 
     </LinearLayout>
+    <TextView
+        android:id="@+id/AR_LoadingBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="30dp"
+        android:textStyle="bold"
+        android:background="#FFF"
+        android:text="Loading...."/>
+
     <LinearLayout
         android:id="@+id/LinearLayoutTutorial"
         android:layout_width="match_parent"

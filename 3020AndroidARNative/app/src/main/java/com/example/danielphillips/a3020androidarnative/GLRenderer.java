@@ -3,6 +3,7 @@ package com.example.danielphillips.a3020androidarnative;
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.os.Handler;
 import android.util.Log;
 
 import com.wikitude.common.rendering.RenderExtension;
@@ -18,6 +19,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     private RenderExtension mWikitudeRenderExtension = null;
     private TreeMap<String, Renderable> mOccluders = new TreeMap<>();
     private TreeMap<String, Renderable> mRenderables = new TreeMap<>();
+
 
     public GLRenderer(RenderExtension wikitudeRenderExtension) {
         mWikitudeRenderExtension = wikitudeRenderExtension;
@@ -38,8 +40,8 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GLES20.glClearDepthf(1.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-        //Current = takeScreenshot(1680,1080,unused);
-        Log.d("GLRender","OnDrawFrame");
+
+        //Log.d("GLRender","OnDrawFrame");
         if (mWikitudeRenderExtension != null) {
             // Will trigger a logic update in the SDK
             mWikitudeRenderExtension.onUpdate();
@@ -47,7 +49,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             mWikitudeRenderExtension.onDrawFrame(unused);
 
         }
+        if(FrameCaptureEnabled) {
 
+            Current = takeScreenshot(1680, 1080, unused);
+        }
         for (TreeMap.Entry<String, Renderable> pairOccluder : mOccluders.entrySet()) {
             Renderable renderable = pairOccluder.getValue();
 
@@ -76,13 +81,17 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             renderable.onSurfaceCreated();
         }
     }
+    public static boolean FrameCaptureEnabled = false;
+
+
+
     public static Bitmap SavePixels(int x, int y, int w, int h, GL10 gl)
     {
         int b[]=new int[w*(y+h)];
         int bt[]=new int[w*h];
         IntBuffer ib=IntBuffer.wrap(b);
         ib.position(0);
-        gl.glReadPixels(x, 0, w, y+h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, ib);
+        gl.glReadPixels(x, 0, w, y+h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, ib);
 
         for(int i=0, k=0; i<h; i++, k++)
         {//remember, that OpenGL bitmap is incompatible with Android bitmap
@@ -106,7 +115,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         final int mHeight = h;
         IntBuffer ib = IntBuffer.allocate(mWidth * mHeight);
         IntBuffer ibt = IntBuffer.allocate(mWidth * mHeight);
-        mGL.glReadPixels(0, 0, mWidth, mHeight, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, ib);
+        mGL.glReadPixels(0, 0, mWidth, mHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, ib);
 
         // Convert upside down mirror-reversed image to right-side up normal image.
         for (int i = 0; i < mHeight; i++) {
