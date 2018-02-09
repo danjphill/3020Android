@@ -5,6 +5,7 @@ package com.example.danielphillips.a3020androidarnative;
  */
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -56,6 +57,7 @@ import com.wikitude.tracker.InstantTarget;
 import com.wikitude.tracker.InitializationPose;
 import com.wikitude.tracker.InstantTrackerScenePickingCallback;
 import com.wikitude.tracker.InstantTrackingState;
+import com.wikitude.tracker.TrackerManager;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -66,11 +68,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.IntBuffer;
 
 import javax.microedition.khronos.opengles.GL10;
+
+import static com.example.danielphillips.a3020androidarnative.StrokedCube.sCubeVertices;
 
 public class ArActivity extends HiddenCameraActivity implements InstantTrackerListener, ExternalRendering {
     String ConnectionResult;
@@ -85,6 +92,7 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
     int current_index = -1;
     String ResultURL = "";
     String LocalResultPath = "";
+    TrackerManager tm;
 
 
     private static final String TAG = "InstantScenePicking";
@@ -104,6 +112,7 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
 
     private LinearLayout mHeightSettingsLayout;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -122,6 +131,7 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
         startupConfiguration.setCameraPosition(CameraSettings.CameraPosition.BACK);
 
         mWikitudeSDK.onCreate(getApplicationContext(), this, startupConfiguration);
+        tm = mWikitudeSDK.getTrackerManager();
 
         mInstantTracker = mWikitudeSDK.getTrackerManager().createInstantTracker(this, null);
 
@@ -136,23 +146,60 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
                     Log.d("TouchCordx", event.getX() + "");
                     Log.d("TouchCordy", event.getY() + "");
 
-                    mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
-                        @Override
-                        public void onCompletion(boolean success, Vector3<Float> result) {
-                            if (success) {
-                                StrokedCube strokedCube = new StrokedCube();
-                                strokedCube.setXScale(0.05f);
-                                strokedCube.setYScale(0.05f);
-                                strokedCube.setZScale(0.05f);
-                                strokedCube.setXTranslate(result.x);
-                                strokedCube.setYTranslate(result.y);
-                                strokedCube.setZTranslate(result.z);
-                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
-
-                            }
-                        }
-                    });
+//                    mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
+//                        @Override
+//                        public void onCompletion(boolean success, Vector3<Float> result) {
+//                            if (success) {
+//                                StrokedCube strokedCube = new StrokedCube();
+//                                strokedCube.setXScale(0.05f);
+//                                strokedCube.setYScale(0.05f);
+//                                strokedCube.setZScale(0.05f);
+//                                strokedCube.setXTranslate(result.x);
+//                                strokedCube.setYTranslate(result.y);
+//                                strokedCube.setZTranslate(result.z);
+//                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+//
+//                            }
+//                        }
+//                    });
                 }
+
+                Class<?> pclUtilClass = null;
+
+                try {
+                    pclUtilClass = Class.forName("com.wikitude.tracker.internal.pcl.PointCloudUtil");
+                    Method method = pclUtilClass.getDeclaredMethod("getPointCloudPoints", TrackerManager.class);
+                    method.setAccessible(true);
+
+
+                    Object[] pcl = (Object[])method.invoke(pclUtilClass,tm);
+                    for(Object o : pcl){
+                        Class<?> clazz = o.getClass();
+                        Field xF = clazz.getField("x");
+                        Field yF = clazz.getField("y");
+                        Field zF = clazz.getField("z");
+
+                        float x = (float) xF.get(o);
+                        float y = (float) yF.get(o);
+                        float z = (float) zF.get(o);
+
+                        //GL10.glDrawArrays(GL10.GL_LINE_LOOP,2,);
+
+                        StrokedCube strokedCube = new StrokedCube();
+                        strokedCube.setXScale(0.05f);
+                        strokedCube.setYScale(0.05f);
+                        strokedCube.setZScale(0.05f);
+                        strokedCube.setXTranslate(x);
+                        strokedCube.setYTranslate(y);
+                        strokedCube.setZTranslate(z);
+                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
 
                 return true;
             }
@@ -405,25 +452,25 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
                         screenCoordinates.x = a;
                         screenCoordinates.y = b;
 
-                        mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
-                            @Override
-                            public void onCompletion(boolean success, Vector3<Float> result) {
-                                if (success) {
-                                    StrokedCube strokedCube = new StrokedCube();
-                                    strokedCube.setXScale(0.05f);
-                                    strokedCube.setYScale(0.05f);
-                                    strokedCube.setZScale(0.05f);
-                                    strokedCube.setXTranslate(result.x);
-                                    strokedCube.setYTranslate(result.y);
-                                    strokedCube.setZTranslate(result.z);
-                                    mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
-                                    Log.d("XYCube", "Added");
-                                } else {
-                                    Log.d("XYCube", "Failed");
-                                }
-
-                            }
-                        });
+//                        mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
+//                            @Override
+//                            public void onCompletion(boolean success, Vector3<Float> result) {
+//                                if (success) {
+//                                    StrokedCube strokedCube = new StrokedCube();
+//                                    strokedCube.setXScale(0.05f);
+//                                    strokedCube.setYScale(0.05f);
+//                                    strokedCube.setZScale(0.05f);
+//                                    strokedCube.setXTranslate(result.x);
+//                                    strokedCube.setYTranslate(result.y);
+//                                    strokedCube.setZTranslate(result.z);
+//                                    mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+//                                    Log.d("XYCube", "Added");
+//                                } else {
+//                                    Log.d("XYCube", "Failed");
+//                                }
+//
+//                            }
+//                        });
 
                     }
                 }
