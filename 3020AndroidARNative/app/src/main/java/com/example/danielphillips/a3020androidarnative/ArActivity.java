@@ -74,6 +74,8 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.microedition.khronos.opengles.GL10;
 
@@ -93,6 +95,9 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
     String ResultURL = "";
     String LocalResultPath = "";
     TrackerManager tm;
+    float x;
+    float y;
+    float z;
 
 
     private static final String TAG = "InstantScenePicking";
@@ -146,10 +151,10 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
                     Log.d("TouchCordx", event.getX() + "");
                     Log.d("TouchCordy", event.getY() + "");
 
-//                    mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
-//                        @Override
-//                        public void onCompletion(boolean success, Vector3<Float> result) {
-//                            if (success) {
+                    mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
+                        @Override
+                        public void onCompletion(boolean success, Vector3<Float> result) {
+                            if (success) {
 //                                StrokedCube strokedCube = new StrokedCube();
 //                                strokedCube.setXScale(0.05f);
 //                                strokedCube.setYScale(0.05f);
@@ -157,54 +162,97 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
 //                                strokedCube.setXTranslate(result.x);
 //                                strokedCube.setYTranslate(result.y);
 //                                strokedCube.setZTranslate(result.z);
+                                x = result.x;
+                                y = result.y;
+                                z = result.z;
 //                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+                                Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                            }
+                        }
+                    });
+
+
+                    Class<?> pclUtilClass = null;
+
+                    try {
+                        pclUtilClass = Class.forName("com.wikitude.tracker.internal.pcl.PointCloudUtil");
+                        Method method = pclUtilClass.getDeclaredMethod("getPointCloudPoints", TrackerManager.class);
+                        method.setAccessible(true);
+
+
+                        Object[] pcl = (Object[]) method.invoke(pclUtilClass, tm);
+
+                        int Counter = 0;
+                        List<Float> xValues = new ArrayList<Float>();
+                        List<Float> yValues = new ArrayList<Float>();
+                        List<Float> zValues = new ArrayList<Float>();
+
+
+                        for (Object o : pcl) {
+                            Class<?> clazz = o.getClass();
+                            Field xF = clazz.getField("x");
+                            Field yF = clazz.getField("y");
+                            Field zF = clazz.getField("z");
+
+                            float x = (float) xF.get(o);
+                            float y = (float) yF.get(o);
+                            float z = (float) zF.get(o);
+
+                            xValues.add(x);
+                            yValues.add(y);
+                            zValues.add(z);
+
+
+                            Counter++;
+//                        if (Counter % 10 == 0) {
 //
-//                            }
+//
 //                        }
-//                    });
-                }
 
-                Class<?> pclUtilClass = null;
-
-                try {
-                    pclUtilClass = Class.forName("com.wikitude.tracker.internal.pcl.PointCloudUtil");
-                    Method method = pclUtilClass.getDeclaredMethod("getPointCloudPoints", TrackerManager.class);
-                    method.setAccessible(true);
-
-
-                    Object[] pcl = (Object[])method.invoke(pclUtilClass,tm);
-                    for(Object o : pcl){
-                        Class<?> clazz = o.getClass();
-                        Field xF = clazz.getField("x");
-                        Field yF = clazz.getField("y");
-                        Field zF = clazz.getField("z");
-
-                        float x = (float) xF.get(o);
-                        float y = (float) yF.get(o);
-                        float z = (float) zF.get(o);
-
-                        //GL10.glDrawArrays(GL10.GL_LINE_LOOP,2,);
-
+                        }
+                        int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
                         StrokedCube strokedCube = new StrokedCube();
                         strokedCube.setXScale(0.05f);
                         strokedCube.setYScale(0.05f);
                         strokedCube.setZScale(0.05f);
-                        strokedCube.setXTranslate(x);
-                        strokedCube.setYTranslate(y);
-                        strokedCube.setZTranslate(z);
+                        float seletcted_x = xValues.get(closestIndex);
+                        float seletcted_y = yValues.get(closestIndex);
+                        float seletcted_z = zValues.get(closestIndex);
+
+                        strokedCube.setXTranslate(seletcted_x);
+                        strokedCube.setYTranslate(seletcted_y);
+                        strokedCube.setZTranslate(seletcted_z);
+                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
                         mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
 
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
-
 
                 return true;
             }
         });
     }
+
+    private int getClosestIndex(List<Float> xValues, List<Float> yValues, List<Float> zValues, float xCalculated, float yCalculated, float zCalculated){
+       int minDistIndex = 0;
+       float minDist = 9999;
+       float currentDist;
+       for (int i = 0; i < xValues.size(); i++){
+            //currentAverage = (Math.abs(xValues.get(i) - Math.abs(xCalculated)) + (Math.abs(yValues.get(i))) - Math.abs(yCalculated)) + (Math.abs(zValues.get(i)) - Math.abs(zCalculated));
+           currentDist = (float) Math.sqrt(Math.pow((xValues.get(i) - xCalculated),2.0) + Math.pow((yValues.get(i) - yCalculated),2.0) + Math.pow((zValues.get(i) - zCalculated),2.0));
+            Log.d("distanceIndex", "dist:"+currentDist+" i:"+i);
+            if (minDist > currentDist){
+                minDist = currentDist;
+                minDistIndex = i;
+            }
+       }
+        Log.d("closestIndex", minDistIndex+"");
+       return minDistIndex;
+    }
+
+
 
     public class ConnectAsync extends AsyncTask<String, Void, String> {
 
