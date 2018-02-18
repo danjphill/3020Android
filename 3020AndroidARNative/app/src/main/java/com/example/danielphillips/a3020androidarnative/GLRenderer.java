@@ -35,6 +35,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         mWikitudeRenderExtension.useSeparatedRenderAndLogicUpdates();
     }
 
+
     @Override
     public synchronized void onDrawFrame(final GL10 unused) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -176,5 +177,8 @@ public class GLRenderer implements GLSurfaceView.Renderer {
     public synchronized Renderable getOccluderForKey(final String key) {
         return mOccluders.get(key);
     }
+
+
+
 
 }

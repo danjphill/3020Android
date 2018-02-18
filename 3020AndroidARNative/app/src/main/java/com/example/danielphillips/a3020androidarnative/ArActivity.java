@@ -14,7 +14,13 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
+import android.hardware.Camera;
 import android.media.Image;
+import android.media.ImageReader;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -23,10 +29,14 @@ import android.os.PowerManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.text.format.Formatter;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -45,7 +55,9 @@ import com.androidhiddencamera.config.CameraRotation;
 import com.wikitude.WikitudeSDK;
 import com.wikitude.NativeStartupConfiguration;
 import com.wikitude.common.camera.CameraSettings;
+import com.wikitude.common.plugins.PluginManager;
 import com.wikitude.common.rendering.RenderExtension;
+import com.wikitude.common.tracking.Frame;
 import com.wikitude.common.util.Vector2;
 import com.wikitude.common.util.Vector3;
 
@@ -60,6 +72,7 @@ import com.wikitude.tracker.InstantTrackingState;
 import com.wikitude.tracker.TrackerManager;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -73,6 +86,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,7 +96,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 import static com.example.danielphillips.a3020androidarnative.StrokedCube.sCubeVertices;
 
-public class ArActivity extends HiddenCameraActivity implements InstantTrackerListener, ExternalRendering {
+public class ArActivity extends Activity implements InstantTrackerListener, ExternalRendering {
     String ConnectionResult;
     Bitmap TutorialImage;
     LinearLayout TutorialLinearLayout;
@@ -98,7 +113,11 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
     float x;
     float y;
     float z;
-
+    private WikitudeCamera2 mWikitudeCamera2;
+    private WikitudeCamera mWikitudeCamera;
+     Image CurrentImg;
+    static Bitmap CurrentBmp;
+     byte[] CurrentBuff;
 
     private static final String TAG = "InstantScenePicking";
 
@@ -116,6 +135,8 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
     private InstantTrackingState mRequestedTrackingState = InstantTrackingState.Initializing;
 
     private LinearLayout mHeightSettingsLayout;
+
+    static boolean FrameCaptureEnabled = false;
 
 
     @Override
@@ -233,26 +254,37 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
                 return true;
             }
         });
-    }
 
-    private int getClosestIndex(List<Float> xValues, List<Float> yValues, List<Float> zValues, float xCalculated, float yCalculated, float zCalculated){
-       int minDistIndex = 0;
-       float minDist = 9999;
-       float currentDist;
-       for (int i = 0; i < xValues.size(); i++){
+        mWikitudeSDK.getPluginManager().registerNativePlugins("wikitudePlugins", "customcamera", new PluginManager.PluginErrorCallback() {
+            @Override
+            public void onRegisterError(int errorCode, String errorMessage) {
+                Log.v(TAG, "Plugin failed to load. Reason: " + errorMessage);
+            }
+        });
+        initNative();
+    }
+    private int getClosestIndex(List<Float> xValues, List<Float> yValues, List<Float> zValues, float xCalculated, float yCalculated, float zCalculated) {
+        int minDistIndex = 0;
+        float minDist = 9999;
+        float currentDist;
+        for (int i = 0; i < xValues.size(); i++) {
             //currentAverage = (Math.abs(xValues.get(i) - Math.abs(xCalculated)) + (Math.abs(yValues.get(i))) - Math.abs(yCalculated)) + (Math.abs(zValues.get(i)) - Math.abs(zCalculated));
-           currentDist = (float) Math.sqrt(Math.pow((xValues.get(i) - xCalculated),2.0) + Math.pow((yValues.get(i) - yCalculated),2.0) + Math.pow((zValues.get(i) - zCalculated),2.0));
-            Log.d("distanceIndex", "dist:"+currentDist+" i:"+i);
-            if (minDist > currentDist){
+            currentDist = (float) Math.sqrt(Math.pow((xValues.get(i) - xCalculated), 2.0) + Math.pow((yValues.get(i) - yCalculated), 2.0) + Math.pow((zValues.get(i) - zCalculated), 2.0));
+            Log.d("distanceIndex", "dist:" + currentDist + " i:" + i);
+            if (minDist > currentDist) {
                 minDist = currentDist;
                 minDistIndex = i;
             }
-       }
-        Log.d("closestIndex", minDistIndex+"");
-       return minDistIndex;
+        }
+        Log.d("closestIndex", minDistIndex + "");
+        return minDistIndex;
     }
-
-
+    Bitmap Img2Bmp(ByteBuffer buff){
+        //ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+        byte[] bytes = new byte[buff.capacity()];
+        buff.get(bytes);
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
+    }
 
     public class ConnectAsync extends AsyncTask<String, Void, String> {
 
@@ -301,6 +333,7 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mWikitudeSDK.clearCache();
         mWikitudeSDK.onDestroy();
     }
 
@@ -543,6 +576,11 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
             LoadingText.setVisibility(View.GONE);
         }
 
+
+        FileOutputStream output = null;
+        ByteBuffer buffer;
+        byte[] bytes;
+        boolean success = false;
         @Override
         protected void onPreExecute() {
             //Create Folder for storing of recognized image
@@ -606,13 +644,33 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
 //            }
 
 
-            GLRenderer.Current = null;
-            GLRenderer.FrameCaptureEnabled = true;
+//            GLRenderer.Current = null;
+//            GLRenderer.FrameCaptureEnabled = true;
+//
+//            Bitmap Image;
+//            int i = 0;
+//
+//            while (GLRenderer.Current == null) {
+//                // do stuff
+//                Log.d("ArActivity", "Waiting On Frame " + i);
+//                i++;
+//                try {
+//                    Thread.sleep(1000);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            GLRenderer.FrameCaptureEnabled = false;
+//            Image = GLRenderer.Current;
+
+
+            CurrentBuff= null;
+            FrameCaptureEnabled = true;
 
             Bitmap Image;
             int i = 0;
 
-            while (GLRenderer.Current == null) {
+            while (CurrentBuff == null) {
                 // do stuff
                 Log.d("ArActivity", "Waiting On Frame " + i);
                 i++;
@@ -622,8 +680,36 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
                     e.printStackTrace();
                 }
             }
-            GLRenderer.FrameCaptureEnabled = false;
-            Image = GLRenderer.Current;
+            FrameCaptureEnabled = false;
+            Log.d("ByteSize",CurrentBuff.length+"");
+            //Image = BitmapFactory.decodeByteArray(CurrentBuff, 0, CurrentBuff.length);
+            //Image = Bitmap.createBitmap(mWikitudeCamera.getFrameWidth(), mWikitudeCamera.getFrameHeight(), Bitmap.Config.ARGB_8888);
+            //Image.copyPixelsFromBuffer(ByteBuffer.wrap(CurrentBuff));
+            ByteArrayOutputStream out1 = new ByteArrayOutputStream();
+            YuvImage yuvImage = new YuvImage(CurrentBuff, ImageFormat.NV21, mWikitudeCamera.getFrameWidth(), mWikitudeCamera.getFrameHeight(), null);
+            double ratio = mSurfaceView.getWidth()/mSurfaceView.getHeight();
+            yuvImage.compressToJpeg(new Rect(0, 0, mWikitudeCamera.getFrameWidth(), mWikitudeCamera.getFrameHeight()), 100, out1);
+            byte[] imageBytes = out1.toByteArray();
+            Image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+            Matrix matrix = new Matrix();
+            matrix.postRotate(90);
+            Image = Bitmap.createBitmap(Image , 0, 0, Image .getWidth(), Image .getHeight(), matrix, true);
+
+            if (Image == null){
+                Log.d("ArActivity","Image Is Null");
+            }
+            //Captureing Frame Using Byte Stream
+
+
+//            Class pclUtilClass = null;
+//
+//            try {
+//                pclUtilClass = Class.forName("com.wikitude.common.tracking.Frame");
+//
+//            Method method = pclUtilClass.getDeclaredMethod("getData", null);
+//            method.setAccessible(true);
+//                byte[] data = (byte[]) method.invoke(pclUtilClass.newInstance());
+//                Image = BitmapFactory.decodeByteArray(data, 0, data.length);
 
 //                    File mydir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/");
 //                    if(!mydir.exists()) {
@@ -636,9 +722,95 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
 //
 //
 //
+//
+//            CurrentBuff = null;
+//            FrameCaptureEnabled = true;
+//
+//            Bitmap Image;
+//            int i = 0;
+//            boolean finished = false;
+//            byte[] bytes = null;
+//            while (CurrentImg == null || finished == false) {
+////                // do stuff
+////                Log.d("ArActivity", "Waiting On Frame " + i);
+////                i++;
+//      try {
+////                    //CurrentBmp = Img2Bmp(CurrentBuff);
+////                    bytes = new byte[CurrentBuff.remaining()];
+////                    CurrentBuff.get(bytes);
+////                    Thread.sleep(1000);
+////                    finished = true;
+//
+////
+////            }
+//
+//                switch (CurrentImg.getFormat()) {
+//
+//
+//                    // YUV_420_888 images are saved in a format of our own devising. First write out the
+//                    // information necessary to reconstruct the image, all as ints: width, height, U-,V-plane
+//                    // pixel strides, and U-,V-plane row strides. (Y-plane will have pixel-stride 1 always.)
+//                    // Then directly place the three planes of byte data, uncompressed.
+//                    //
+//                    // Note the YUV_420_888 format does not guarantee the last pixel makes it in these planes,
+//                    // so some cases are necessary at the decoding end, based on the number of bytes present.
+//                    // An alternative would be to also encode, prior to each plane of bytes, how many bytes are
+//                    // in the following plane. Perhaps in the future.
+//                    case ImageFormat.YUV_420_888:
+//                        // "prebuffer" simply contains the meta information about the following planes.
+//                        ByteBuffer prebuffer = ByteBuffer.allocate(16);
+//                        prebuffer.putInt(CurrentImg.getWidth())
+//                                .putInt(CurrentImg.getHeight())
+//                                .putInt(CurrentImg.getPlanes()[1].getPixelStride())
+//                                .putInt(CurrentImg.getPlanes()[1].getRowStride());
+//
+//                        try {
+//                            output = new FileOutputStream(imgFile);
+//                            output.write(prebuffer.array()); // write meta information to file
+//                            // Now write the actual planes.
+//                            for (i = 0; i < 3; i++) {
+//                                buffer = CurrentImg.getPlanes()[i].getBuffer();
+//                                bytes = new byte[buffer.remaining()]; // makes byte array large enough to hold image
+//                                buffer.get(bytes); // copies image from buffer to byte array
+//                                output.write(bytes);    // write the byte array to file
+//                            }
+//                            success = true;
+//                        } catch (FileNotFoundException e) {
+//                            e.printStackTrace();
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        } finally {
+//                            Log.v("ArActivity", "Closing image to free buffer.");
+//                            CurrentImg.close(); // close this to free up buffer for other images
+//                            if (null != output) {
+//                                try {
+//                                    output.close();
+//                                } catch (IOException e) {
+//                                    e.printStackTrace();
+//                                }
+//                            }
+//                        }
+//                        break;
+//                }
+//                          } catch (Exception e) {
+//                    e.printStackTrace();
+//                    finished = false;
+//                }
+//            }
+            FrameCaptureEnabled = false;
+
             FileOutputStream out = null;
             try {
+                //ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+
+//                try {
+//                    save(bytes, imgFile);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+                //image.close();
                 out = new FileOutputStream(imgFile);
+
                 Image.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
                 WebServer.path = imgFile.toString();
                 //GLRenderer.FrameCaptureEnabled = false;
@@ -667,12 +839,31 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
                     e.printStackTrace();
                 }
             }
-
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
 
         }
 
         @Override
         protected void onProgressUpdate(Void... values) {
+        }
+    }
+
+    private void save(byte[] bytes, File file) throws IOException {
+        Log.i("JpegSaver", "save");
+        OutputStream os = null;
+        try {
+            os = new FileOutputStream(file);
+            os.write(bytes);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (os != null) {
+                os.close();
+            }
         }
     }
 
@@ -827,21 +1018,6 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
         Log.v(TAG, builder.toString());
     }
 
-    @Override
-    public void onImageCapture(@NonNull File imageFile) {
-        Log.d("ImageCaptured ", "ImageCaptured");
-        mWikitudeSDK.onResume();
-        mSurfaceView.onResume();
-        mDriver.start();
-    }
-
-    @Override
-    public void onCameraError(int errorCode) {
-        mWikitudeSDK.onResume();
-        mSurfaceView.onResume();
-        mDriver.start();
-    }
-
     String getDeviceIP() {
 
         WifiManager wm = (WifiManager) getApplicationContext().getSystemService(getApplicationContext().WIFI_SERVICE);
@@ -962,5 +1138,198 @@ public class ArActivity extends HiddenCameraActivity implements InstantTrackerLi
             }
 
         }
+
+
     }
+
+    public void onInputPluginInitialized() {
+        Log.v(TAG, "onInputPluginInitialized");
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+//                if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+//                    mWikitudeCamera2 = new WikitudeCamera2(ArActivity.this, 640, 480);
+//                    setFrameSize(mWikitudeCamera2.getFrameWidth(), mWikitudeCamera2.getFrameHeight());
+//                    setCameraFieldOfView((mWikitudeCamera2.getCameraFieldOfView()));
+//
+//                    if(isCameraLandscape()) {
+//                        setDefaultDeviceOrientationLandscape(true);
+//                    }
+//
+//                    int imageSensorRotation = mWikitudeCamera2.getImageSensorRotation();
+//                    if (imageSensorRotation != 0) {
+//                        setImageSensorRotation(imageSensorRotation);
+//                    }
+//                }
+//                else
+                //{
+                    mWikitudeCamera = new WikitudeCamera(640, 480);
+                    setFrameSize(mWikitudeCamera.getFrameWidth(), mWikitudeCamera.getFrameHeight());
+
+                    if(isCameraLandscape()) {
+                        setDefaultDeviceOrientationLandscape(true);
+                    }
+
+                    int imageSensorRotation = mWikitudeCamera.getImageSensorRotation();
+                    if (imageSensorRotation != 0) {
+                        setImageSensorRotation(imageSensorRotation);
+                    }
+                //}
+            }
+        });
+    }
+
+    public void onInputPluginPaused() {
+        Log.v(TAG, "onInputPluginPaused");
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+//                if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1)
+//                {
+//                    mWikitudeCamera2.close();
+//                }
+//                else
+//                {
+                    mWikitudeCamera.close();
+                //}
+            }
+        });
+    }
+
+    @SuppressLint("NewApi")
+    public void onInputPluginResumed() {
+        Log.v(TAG, "onInputPluginResumed");
+
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+//                if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+//                    ArActivity.this.mWikitudeCamera2.start(new ImageReader.OnImageAvailableListener() {
+//                        @Override
+//                        public void onImageAvailable(ImageReader reader) {
+//                            Image image = reader.acquireLatestImage();
+//                            //Log.d("CustomCameraActivity","onPrev");
+//                            if(FrameCaptureEnabled) {
+//
+//                                CurrentImg = image;
+//
+//                            }
+//                            if (null != image && null != image.getPlanes()) {
+//
+//                                Image.Plane[] planes = image.getPlanes();
+//
+//                                int widthLuminance = image.getWidth();
+//                                int heightLuminance = image.getHeight();
+//
+//                                // 4:2:0 format -> chroma planes have half the width and half the height of the luma plane
+//                                int widthChrominance = widthLuminance / 2;
+//                                int heightChrominance = heightLuminance / 2;
+//
+//                                int pixelStrideLuminance = planes[0].getPixelStride();
+//                                int rowStrideLuminance = planes[0].getRowStride();
+//
+//                                int pixelStrideBlue = planes[1].getPixelStride();
+//                                int rowStrideBlue = planes[1].getRowStride();
+//
+//                                int pixelStrideRed = planes[2].getPixelStride();
+//                                int rowStrideRed = planes[2].getRowStride();
+//                                Log.d("CustomCameraActivity","onPrev");
+//
+//                                notifyNewCameraFrame(
+//
+//                                        widthLuminance,
+//                                        heightLuminance,
+//                                        getPlanePixelPointer(planes[0].getBuffer()),
+//                                        pixelStrideLuminance,
+//                                        rowStrideLuminance,
+//                                        widthChrominance,
+//                                        heightChrominance,
+//                                        getPlanePixelPointer(planes[1].getBuffer()),
+//                                        pixelStrideBlue,
+//                                        rowStrideBlue,
+//                                        getPlanePixelPointer(planes[2].getBuffer()),
+//                                        pixelStrideRed,
+//                                        rowStrideRed
+//                                );
+//
+//                                image.close();
+//                            }
+//                        }
+//                    });
+//                }
+//                else
+                //{
+                    mWikitudeCamera.start(new Camera.PreviewCallback() {
+
+                        @Override
+                        public void onPreviewFrame(byte[] data, Camera camera) {
+                            Log.d("CustomCameraActivity","onPrev");
+
+
+                            if(FrameCaptureEnabled) {
+//
+                                CurrentBuff = data;
+//
+                            }
+                            notifyNewCameraFrameN21(data);
+                        }
+                    });
+                    setCameraFieldOfView(mWikitudeCamera.getCameraFieldOfView());
+                //}
+            }
+        });
+    }
+
+    public void onInputPluginDestroyed() {
+        Log.v(TAG, "onInputPluginDestroyed");
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+//                if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+//                    mWikitudeCamera2.close();
+//                }
+//                else
+                //{
+                    mWikitudeCamera.close();
+               // }
+            }
+        });
+    }
+
+    private byte[] getPlanePixelPointer(ByteBuffer pixelBuffer) {
+        byte[] bytes;
+        if (pixelBuffer.hasArray()) {
+            bytes = pixelBuffer.array();
+        } else {
+            bytes = new byte[pixelBuffer.remaining()];
+            pixelBuffer.get(bytes);
+        }
+
+        return bytes;
+    }
+
+    public boolean isCameraLandscape(){
+        final Display display = ((WindowManager)getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+        final DisplayMetrics dm = new DisplayMetrics();
+        final int rotation = display.getRotation();
+
+        display.getMetrics(dm);
+
+        final boolean is90off = rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270;
+        final boolean isLandscape = dm.widthPixels > dm.heightPixels;
+
+        return is90off ^ isLandscape;
+    }
+    private native void initNative();
+    private native void notifyNewCameraFrame(int widthLuminance, int heightLuminance, byte[] pixelPointerLuminance, int pixelStrideLuminance, int rowStrideLuminance, int widthChrominance, int heightChrominance, byte[] pixelPointerChromaBlue, int pixelStrideBlue, int rowStrideBlue, byte[] pixelPointerChromaRed, int pixelStrideRed, int rowStrideRed);
+    private native void notifyNewCameraFrameN21(byte[] frameData);
+    private native void setCameraFieldOfView(double fieldOfView);
+    private native void setFrameSize(int frameWidth, int frameHeight);
+    private native void setDefaultDeviceOrientationLandscape(boolean isLandscape);
+    private native void setImageSensorRotation(int rotation);
+
 }
