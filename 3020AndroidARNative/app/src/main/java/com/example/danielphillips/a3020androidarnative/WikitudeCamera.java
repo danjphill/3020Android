@@ -25,6 +25,7 @@ public class WikitudeCamera implements Camera.ErrorCallback {
             mCameraParameters = mCamera.getParameters();
             mCameraParameters.setPreviewFormat(ImageFormat.NV21);
             Camera.Size cameraSize = getCameraSize(mFrameWidth, mFrameHeight);
+            Log.d("Frame_Height_Width",cameraSize.height+"_"+cameraSize.width);
             mCameraParameters.setPreviewSize(cameraSize.width, cameraSize.height);
             mFieldOfView = mCameraParameters.getHorizontalViewAngle();
             mCamera.setParameters(mCameraParameters);
