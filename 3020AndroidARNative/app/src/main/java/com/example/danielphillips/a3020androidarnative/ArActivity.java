@@ -355,7 +355,6 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         TutorialText = (TextView) findViewById(R.id.tutorial_text);
 
         TutorialBack.setVisibility(View.INVISIBLE);
-        TutorialReload.setVisibility(View.INVISIBLE);
         TutorialNext.setVisibility(View.INVISIBLE);
         LoadingText.setVisibility(View.GONE);
         TutorialText.setVisibility(View.GONE);
@@ -393,6 +392,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 
                 LoadingText.setText("Loading...");
                 LoadingText.setVisibility(View.VISIBLE);
+                TutorialText.setVisibility(View.INVISIBLE);
                 thread.start();
 
 //                if (current_index == 3) {
@@ -407,7 +407,16 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         TutorialReload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new RecognizeAsync().execute("");
+                Thread thread = new Thread() {
+                    @Override
+                    public void run() {
+                        new RecognizeAsync().execute("");
+                    }
+                };
+                LoadingText.setText("Loading...");
+                LoadingText.setVisibility(View.VISIBLE);
+                TutorialText.setVisibility(View.INVISIBLE);
+                thread.start();
             }
         });
 
@@ -498,7 +507,49 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             boolean has_memory = false;
             boolean has_pcie = false;
 
+            List<Float> xValues = new ArrayList<Float>();
+            List<Float> yValues = new ArrayList<Float>();
+            List<Float> zValues = new ArrayList<Float>();
+            Class<?> pclUtilClass = null;
 
+            try {
+                pclUtilClass = Class.forName("com.wikitude.tracker.internal.pcl.PointCloudUtil");
+                Method method = pclUtilClass.getDeclaredMethod("getPointCloudPoints", TrackerManager.class);
+                method.setAccessible(true);
+
+
+                Object[] pcl = (Object[]) method.invoke(pclUtilClass, tm);
+
+                int Counter = 0;
+
+
+
+                for (Object o : pcl) {
+                    Class<?> clazz = o.getClass();
+                    Field xF = clazz.getField("x");
+                    Field yF = clazz.getField("y");
+                    Field zF = clazz.getField("z");
+
+                    float x = (float) xF.get(o);
+                    float y = (float) yF.get(o);
+                    float z = (float) zF.get(o);
+
+                    xValues.add(x);
+                    yValues.add(y);
+                    zValues.add(z);
+
+
+                    Counter++;
+//                        if (Counter % 10 == 0) {
+//
+//
+//                        }
+
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            mGLRenderer.removeAllRenderables();
             LoadingText.setText("Adding Data Points...");
             try {
                 while ((line = bufReader.readLine()) != null) {
@@ -566,9 +617,49 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 //
 //                            }
 //                        });
+                        mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
+                            @Override
+                            public void onCompletion(boolean success, Vector3<Float> result) {
+                                if (success) {
+//                                StrokedCube strokedCube = new StrokedCube();
+//                                strokedCube.setXScale(0.05f);
+//                                strokedCube.setYScale(0.05f);
+//                                strokedCube.setZScale(0.05f);
+//                                strokedCube.setXTranslate(result.x);
+//                                strokedCube.setYTranslate(result.y);
+//                                strokedCube.setZTranslate(result.z);
+                                    x = result.x;
+                                    y = result.y;
+                                    z = result.z;
+//                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+                                    Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                                }
+                            }
+                        });
+
+
+
+                            int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
+                            StrokedCube strokedCube = new StrokedCube();
+                            strokedCube.setXScale(0.05f);
+                            strokedCube.setYScale(0.05f);
+                            strokedCube.setZScale(0.05f);
+                            float seletcted_x = xValues.get(closestIndex);
+                            float seletcted_y = yValues.get(closestIndex);
+                            float seletcted_z = zValues.get(closestIndex);
+
+                            strokedCube.setXTranslate(seletcted_x);
+                            strokedCube.setYTranslate(seletcted_y);
+                            strokedCube.setZTranslate(seletcted_z);
+                            Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
+                            mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+
+
 
                     }
-                }
+
+                    }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -586,7 +677,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                 TutorialText.setText("Please Remove the Memory (Step 2 of 3)");
                 TutorialNext.setVisibility(View.VISIBLE);
             } else if (!heatsink && !memory && pcie) {
-                TutorialText.setText("Please Remove the Heatsink (Step 3 of 3)");
+                TutorialText.setText("Please Remove the PCIE Cards (Step 3 of 3)");
                 TutorialNext.setVisibility(View.VISIBLE);
             } else if (!heatsink && !memory && !pcie) {
                 TutorialText.setText("Tutorial Complete");
@@ -600,9 +691,13 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             } else if (!heatsink && memory && !pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
                 TutorialNext.setVisibility(View.VISIBLE);
-            } else {
+            } else if(heatsink && memory && !pcie) {
+                TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
+                TutorialNext.setVisibility(View.VISIBLE);
+            }else{
                 TutorialText.setText("Please Restart Tutorial");
                 TutorialNext.setVisibility(View.INVISIBLE);
+                TutorialReload.setVisibility(View.VISIBLE);
             }
             TutorialText.setVisibility(View.VISIBLE);
         }
