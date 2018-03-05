@@ -108,6 +108,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
     private static final String TAG = "InstantScenePicking";
 
     private static int cubeID = 0;
+    private static int rectID = 0;
 
     private WikitudeSDK mWikitudeSDK;
     private CustomSurfaceView mSurfaceView;
@@ -162,17 +163,17 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                         @Override
                         public void onCompletion(boolean success, Vector3<Float> result) {
                             if (success) {
-//                                StrokedCube strokedCube = new StrokedCube();
-//                                strokedCube.setXScale(0.05f);
-//                                strokedCube.setYScale(0.05f);
-//                                strokedCube.setZScale(0.05f);
-//                                strokedCube.setXTranslate(result.x);
-//                                strokedCube.setYTranslate(result.y);
-//                                strokedCube.setZTranslate(result.z);
+                                StrokedRectangle2 strokedCube = new StrokedRectangle2(StrokedRectangle2.Type.EXTENDED);
+                                strokedCube.setXScale(0.05f);
+                                strokedCube.setYScale(0.05f);
+                                //strokedCube.setZScale(0.05f);
+                                strokedCube.setXTranslate(result.x);
+                                strokedCube.setYTranslate(result.y);
+                                //strokedCube.setZTranslate(result.z);
                                 x = result.x;
                                 y = result.y;
                                 z = result.z;
-//                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+                                mGLRenderer.setRenderablesForKey("" + rectID++, strokedCube, null);
                                 Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
                             }
                         }
@@ -218,19 +219,26 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 
                         }
                         int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
-                        StrokedCube strokedCube = new StrokedCube();
-                        strokedCube.setXScale(0.05f);
-                        strokedCube.setYScale(0.05f);
-                        strokedCube.setZScale(0.05f);
+                        StrokedRectangle2 strokedRect = new StrokedRectangle2();
+                        strokedRect.setXScale(0.05f);
+                        strokedRect.setYScale(0.05f);
+//                        //strokedCube.setZScale(0.05f);
                         float seletcted_x = xValues.get(closestIndex);
                         float seletcted_y = yValues.get(closestIndex);
-                        float seletcted_z = zValues.get(closestIndex);
+//                        float seletcted_z = zValues.get(closestIndex);
 
-                        strokedCube.setXTranslate(seletcted_x);
-                        strokedCube.setYTranslate(seletcted_y);
-                        strokedCube.setZTranslate(seletcted_z);
-                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
-                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+
+                        strokedRect.setXTranslate(seletcted_x);
+                        strokedRect.setYTranslate(seletcted_y);
+//                        strokedCube.setZTranslate(seletcted_z);
+                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + ",");
+                        mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
+                        StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
+
+                        strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
+
+
+                        mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
 
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -500,12 +508,13 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             androidWebServer.stop();
             //ResultURL.replace("\n","");
             //String ResultFullURL = "http://"+IPManager.GetIPAddress(ArActivity.this)+"/"+ResultURL;
-            Log.d("ResultURL",ResultURL);
+            Log.d("ResultURL", ResultURL);
             BufferedReader bufReader = new BufferedReader(new StringReader(ResultURL));
             String line = null;
             boolean has_heatsink = false;
             boolean has_memory = false;
             boolean has_pcie = false;
+            String warning = "none";
 
             List<Float> xValues = new ArrayList<Float>();
             List<Float> yValues = new ArrayList<Float>();
@@ -521,7 +530,6 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                 Object[] pcl = (Object[]) method.invoke(pclUtilClass, tm);
 
                 int Counter = 0;
-
 
 
                 for (Object o : pcl) {
@@ -561,11 +569,15 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                         has_heatsink = true;
                     } else if (CurrLine[0].contains("Card Slot")) {
                         has_pcie = true;
+                    } else if(CurrLine[0].contains("Warn")){
+                        warning = CurrLine[1];
+                        Toast.makeText(ArActivity.this, warning, Toast.LENGTH_LONG).show();
                     }
 
-                    Log.d("has_heatsink",has_heatsink+"");
-                    Log.d("has_memory",has_memory+"");
-                    Log.d("has_pcie",has_memory+"");
+                    Log.d("has_heatsink", has_heatsink + "");
+                    Log.d("has_memory", has_memory + "");
+                    Log.d("has_pcie", has_memory + "");
+                    Log.d("Warning",warning);
                     displayTutorialText(has_heatsink, has_memory, has_pcie);
 
                     Log.d(CurrLine[0] + " min_x : ", CurrLine[2]);
@@ -638,27 +650,25 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                         });
 
 
+                        int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
+                        StrokedCube strokedCube = new StrokedCube();
+                        strokedCube.setXScale(0.05f);
+                        strokedCube.setYScale(0.05f);
+                        strokedCube.setZScale(0.05f);
+                        float seletcted_x = xValues.get(closestIndex);
+                        float seletcted_y = yValues.get(closestIndex);
+                        float seletcted_z = zValues.get(closestIndex);
 
-                            int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
-                            StrokedCube strokedCube = new StrokedCube();
-                            strokedCube.setXScale(0.05f);
-                            strokedCube.setYScale(0.05f);
-                            strokedCube.setZScale(0.05f);
-                            float seletcted_x = xValues.get(closestIndex);
-                            float seletcted_y = yValues.get(closestIndex);
-                            float seletcted_z = zValues.get(closestIndex);
-
-                            strokedCube.setXTranslate(seletcted_x);
-                            strokedCube.setYTranslate(seletcted_y);
-                            strokedCube.setZTranslate(seletcted_z);
-                            Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
-                            mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
-
+                        strokedCube.setXTranslate(seletcted_x);
+                        strokedCube.setYTranslate(seletcted_y);
+                        strokedCube.setZTranslate(seletcted_z);
+                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
+                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
 
 
                     }
 
-                    }
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -691,10 +701,10 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             } else if (!heatsink && memory && !pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
                 TutorialNext.setVisibility(View.VISIBLE);
-            } else if(heatsink && memory && !pcie) {
+            } else if (heatsink && memory && !pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
                 TutorialNext.setVisibility(View.VISIBLE);
-            }else{
+            } else {
                 TutorialText.setText("Please Restart Tutorial");
                 TutorialNext.setVisibility(View.INVISIBLE);
                 TutorialReload.setVisibility(View.VISIBLE);
@@ -832,11 +842,15 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         });
 
         if (mCurrentTrackingState == InstantTrackingState.Initializing) {
-            for (int i = 0; i < cubeID; ++i) {
-                mGLRenderer.removeRenderablesForKey("" + i);
+//            for (int i = 0; i < cubeID; ++i) {
+//                mGLRenderer.removeRenderablesForKey("" + i);
+//            }
+            for (int y = 0; y < (rectID+cubeID); ++y) {
+                mGLRenderer.removeRenderablesForKey("" + y);
             }
 
             cubeID = 0;
+            rectID = 0;
         }
     }
 
@@ -888,12 +902,28 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
 
         for (int i = 0; i < cubeID; ++i) {
-            StrokedCube strokedCube = (StrokedCube) mGLRenderer.getRenderableForKey("" + i);
-            if (strokedCube != null) {
-                strokedCube.projectionMatrix = target.getProjectionMatrix();
-                strokedCube.viewMatrix = target.getViewMatrix();
+            try {
+                StrokedCube strokedCube = (StrokedCube) mGLRenderer.getRenderableForKey("" + i);
+                if (strokedCube != null) {
+                    strokedCube.projectionMatrix = target.getProjectionMatrix();
+                    strokedCube.viewMatrix = target.getViewMatrix();
+                }
+            } catch (java.lang.ClassCastException e) {
+                e.printStackTrace();
             }
         }
+        for (int y = 0; y < rectID; ++y) {
+            try {
+                StrokedRectangle2 strokedRectangle2 = (StrokedRectangle2) mGLRenderer.getRenderableForKey("" + y);
+                if (strokedRectangle2 != null) {
+                    strokedRectangle2.projectionMatrix = target.getProjectionMatrix();
+                    strokedRectangle2.viewMatrix = target.getViewMatrix();
+                }
+            } catch (java.lang.ClassCastException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     @Override
@@ -903,10 +933,25 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         mGLRenderer.removeRenderablesForKey("");
 
         for (int i = 0; i < cubeID; ++i) {
-            StrokedCube strokedCube = (StrokedCube) mGLRenderer.getRenderableForKey("" + i);
+            try {
+                StrokedCube strokedCube = (StrokedCube) mGLRenderer.getRenderableForKey("" + i);
+                if (strokedCube != null) {
+                    strokedCube.projectionMatrix = null;
+                    strokedCube.viewMatrix = null;
+                }
+            }catch (java.lang.ClassCastException e){
+                e.printStackTrace();
+            }
+        }
+        for (int i = 0; i < rectID; ++i) {
+            try{
+            StrokedRectangle2 strokedCube = (StrokedRectangle2) mGLRenderer.getRenderableForKey("" + i);
             if (strokedCube != null) {
                 strokedCube.projectionMatrix = null;
                 strokedCube.viewMatrix = null;
+            }
+            }catch (java.lang.ClassCastException e){
+                e.printStackTrace();
             }
         }
     }
@@ -939,8 +984,8 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 
                 mWikitudeCamera = new WikitudeCamera(1920, 1080);
                 setFrameSize(mWikitudeCamera.getFrameWidth(), mWikitudeCamera.getFrameHeight());
-                Log.d("Frame_Height_Width",mWikitudeCamera.getFrameHeight()+"_"+mWikitudeCamera.getFrameWidth());
-                Log.d("Screen_Height_Width",mSurfaceView.getHeight()+"_"+mSurfaceView.getWidth());
+                Log.d("Frame_Height_Width", mWikitudeCamera.getFrameHeight() + "_" + mWikitudeCamera.getFrameWidth());
+                Log.d("Screen_Height_Width", mSurfaceView.getHeight() + "_" + mSurfaceView.getWidth());
 
                 if (isCameraLandscape()) {
                     setDefaultDeviceOrientationLandscape(true);

@@ -1,5 +1,9 @@
 package com.example.danielphillips.a3020androidarnative;
 
+/**
+ * Created by danielphillips on 2/27/18.
+ */
+
 import android.opengl.GLES20;
 import android.util.Log;
 
@@ -8,7 +12,8 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
-public class StrokedRectangle extends Renderable {
+
+public class StrokedRectangle2 extends Renderable {
 
     public enum Type {
         FACE, STANDARD, EXTENDED, TRACKING_3D
@@ -18,21 +23,21 @@ public class StrokedRectangle extends Renderable {
 
     String mFragmentShaderCode =
             "precision mediump float;" +
-            "uniform vec3 Color;" +
-            "void main()" +
-            "{" +
-            "  gl_FragColor = vec4(Color, 1.0);" +
-            "}";
+                    "uniform vec3 Color;" +
+                    "void main()" +
+                    "{" +
+                    "  gl_FragColor = vec4(Color, 1.0);" +
+                    "}";
 
     String mVertexShaderCode =
             "attribute vec4 v_position;" +
-            "uniform mat4 Projection;" +
-            "uniform mat4 ModelView;" +
-            "uniform mat4 Scale;" +
-            "void main()" +
-            "{" +
-            "  gl_Position = Projection * ModelView * Scale * v_position;" +
-            "}";
+                    "uniform mat4 Projection;" +
+                    "uniform mat4 ModelView;" +
+                    "uniform mat4 Scale;" +
+                    "void main()" +
+                    "{" +
+                    "  gl_Position = Projection * ModelView * Scale * v_position;" +
+                    "}";
 
     private int mAugmentationProgram = -1;
     private int mPositionSlot = -1;
@@ -40,6 +45,7 @@ public class StrokedRectangle extends Renderable {
     private int mModelViewUniform = -1;
     private int mColorUniform = -1;
     private int mScaleUniform = -1;
+    private int mTranslateUniform = -1;
 
     private float mRed = 1.0f;
     private float mGreen = 0.58f;
@@ -47,6 +53,10 @@ public class StrokedRectangle extends Renderable {
 
     private float mXScale = 1.0f;
     private float mYScale = 1.0f;
+
+    private float mXTranslate = 0.0f;
+    private float mYTranslate = 0.0f;
+
 
     static float sRectVerts[] = {
             -0.5f, -0.5f, 0.0f,
@@ -72,11 +82,11 @@ public class StrokedRectangle extends Renderable {
 
     private final short mIndices[] = { 0, 1, 2, 3 };
 
-    public StrokedRectangle() {
+    public StrokedRectangle2() {
         this(Type.STANDARD);
     }
 
-    public StrokedRectangle(Type type) {
+    public StrokedRectangle2(Type type) {
         ByteBuffer dlb = ByteBuffer.allocateDirect(mIndices.length * 2);
         dlb.order(ByteOrder.nativeOrder());
         mIndicesBuffer = dlb.asShortBuffer();
@@ -111,7 +121,7 @@ public class StrokedRectangle extends Renderable {
             return;
         }
 
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glUseProgram(mAugmentationProgram);
 
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
@@ -132,12 +142,19 @@ public class StrokedRectangle extends Renderable {
                 0.0f,       0.0f,       0.0f,       1.0f
         };
 
+        float[] translateMatrix = {
+                1.0f,               0.0f,               0.0f,               0.0f,
+                0.0f,               1.0f,               0.0f,               0.0f,
+                0.0f,               0.0f,               1.0f,               0.0f,
+                mXTranslate,        mYTranslate,        0.0f,               1.0f
+        };
 
-
+        GLES20.glUniformMatrix4fv(mTranslateUniform, 1, false, translateMatrix, 0);
         GLES20.glUniformMatrix4fv(mScaleUniform, 1, false, scaleMatrix, 0);
 
 
-        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glLineWidth(10.0f);
 
         GLES20.glDrawElements(GLES20.GL_LINE_LOOP, mIndices.length, GLES20.GL_UNSIGNED_SHORT, mIndicesBuffer);
@@ -166,6 +183,18 @@ public class StrokedRectangle extends Renderable {
     public void setYScale(float yScale) {
         this.mYScale = yScale;
     }
+
+    public float getXTranslate() {
+        return mXTranslate;
+    }
+
+    public void setXTranslate(float xTranslate) { this.mXTranslate = xTranslate; }
+
+    public float getYTranslate() {
+        return mYTranslate;
+    }
+
+    public void setYTranslate(float yTranslate) { this.mYTranslate = yTranslate; }
 
     private void compileShaders() {
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, mVertexShaderCode);
@@ -200,3 +229,4 @@ public class StrokedRectangle extends Renderable {
         }
     }
 }
+
