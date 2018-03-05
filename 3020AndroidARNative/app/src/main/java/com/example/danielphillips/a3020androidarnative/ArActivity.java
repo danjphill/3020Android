@@ -175,6 +175,8 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                 z = result.z;
                                 mGLRenderer.setRenderablesForKey("" + rectID++, strokedCube, null);
                                 Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                            }else{
+                                Log.d("TouchXYZ_TC", "Failed");
                             }
                         }
                     });
@@ -265,7 +267,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         for (int i = 0; i < xValues.size(); i++) {
             //currentAverage = (Math.abs(xValues.get(i) - Math.abs(xCalculated)) + (Math.abs(yValues.get(i))) - Math.abs(yCalculated)) + (Math.abs(zValues.get(i)) - Math.abs(zCalculated));
             currentDist = (float) Math.sqrt(Math.pow((xValues.get(i) - xCalculated), 2.0) + Math.pow((yValues.get(i) - yCalculated), 2.0) + Math.pow((zValues.get(i) - zCalculated), 2.0));
-            Log.d("distanceIndex", "dist:" + currentDist + " i:" + i);
+            //Log.d("distanceIndex", "dist:" + currentDist + " i:" + i);
             if (minDist > currentDist) {
                 minDist = currentDist;
                 minDistIndex = i;
@@ -645,30 +647,104 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                     z = result.z;
 //                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
                                     Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                                }else {
+                                    Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
                                 }
                             }
                         });
 
 
+//                        int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
+//                        StrokedCube strokedCube = new StrokedCube();
+//                        strokedCube.setXScale(0.05f);
+//                        strokedCube.setYScale(0.05f);
+//                        strokedCube.setZScale(0.05f);
+//                        float seletcted_x = xValues.get(closestIndex);
+//                        float seletcted_y = yValues.get(closestIndex);
+//                        float seletcted_z = zValues.get(closestIndex);
+//
+//                        strokedCube.setXTranslate(seletcted_x);
+//                        strokedCube.setYTranslate(seletcted_y);
+//                        strokedCube.setZTranslate(seletcted_z);
+//                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
+//                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+
                         int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
-                        StrokedCube strokedCube = new StrokedCube();
-                        strokedCube.setXScale(0.05f);
-                        strokedCube.setYScale(0.05f);
-                        strokedCube.setZScale(0.05f);
+                        StrokedRectangle2 strokedRect = new StrokedRectangle2();
+                        strokedRect.setXScale(0.05f);
+                        strokedRect.setYScale(0.05f);
+//                        //strokedCube.setZScale(0.05f);
                         float seletcted_x = xValues.get(closestIndex);
                         float seletcted_y = yValues.get(closestIndex);
-                        float seletcted_z = zValues.get(closestIndex);
+//                        float seletcted_z = zValues.get(closestIndex);
 
-                        strokedCube.setXTranslate(seletcted_x);
-                        strokedCube.setYTranslate(seletcted_y);
-                        strokedCube.setZTranslate(seletcted_z);
-                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
-                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+
+                        strokedRect.setXTranslate(seletcted_x);
+                        strokedRect.setYTranslate(seletcted_y);
+//                        strokedCube.setZTranslate(seletcted_z);
+                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + ",");
+                        mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
+                        StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
+
+                        strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
+
+
+                        mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
 
 
                     }
 
                 }
+
+                File mydir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/");
+                if (!mydir.exists())
+                    mydir.mkdirs();
+                else
+                    Log.d("error", "dir. already exists");
+                File tempImgdir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/Uploads/");
+                if (!tempImgdir.exists())
+                    tempImgdir.mkdirs();
+                else
+                    Log.d("error", "dir. already exists");
+                GLRenderer.Current = null;
+                GLRenderer.FrameCaptureEnabled = true;
+                while (GLRenderer.Current == null) {
+                    Log.d("ArActivity, ", "Waiting For Result Image");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                GLRenderer.FrameCaptureEnabled = false;
+                final File imgFile = new File(tempImgdir, "temp_file_result.png");
+                Bitmap Image = GLRenderer.Current;
+                FileOutputStream out = null;
+                try {
+
+                    out = new FileOutputStream(imgFile);
+
+                    Image.compress(Bitmap.CompressFormat.PNG, 100, out);
+                    WebServer.path = imgFile.toString();
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (out != null) {
+                            out.close();
+                        }
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    LoadingText.setVisibility(View.GONE);
+                }
+
+
+
+
 
             } catch (IOException e) {
                 e.printStackTrace();

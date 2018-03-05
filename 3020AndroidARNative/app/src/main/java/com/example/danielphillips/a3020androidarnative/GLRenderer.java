@@ -50,10 +50,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
             mWikitudeRenderExtension.onDrawFrame(unused);
 
         }
-        if(FrameCaptureEnabled) {
 
-            Current = takeScreenshot(1680, 1080, unused);
-        }
         for (TreeMap.Entry<String, Renderable> pairOccluder : mOccluders.entrySet()) {
             Renderable renderable = pairOccluder.getValue();
 
@@ -63,6 +60,10 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         for (TreeMap.Entry<String, Renderable> pairRenderables : mRenderables.entrySet()) {
             Renderable renderable = pairRenderables.getValue();
             renderable.onDrawFrame();
+        }
+        if(FrameCaptureEnabled) {
+
+            Current = takeScreenshot(1680, 1080, unused);
         }
     }
 
