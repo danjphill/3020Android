@@ -34,9 +34,10 @@ public class StrokedRectangle2 extends Renderable {
                     "uniform mat4 Projection;" +
                     "uniform mat4 ModelView;" +
                     "uniform mat4 Scale;" +
+                    "uniform mat4 u_translation;" +
                     "void main()" +
                     "{" +
-                    "  gl_Position = Projection * ModelView * Scale * v_position;" +
+                    "  gl_Position = Projection * ModelView * u_translation * Scale * v_position;" +
                     "}";
 
     private int mAugmentationProgram = -1;
@@ -121,7 +122,7 @@ public class StrokedRectangle2 extends Renderable {
             return;
         }
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glUseProgram(mAugmentationProgram);
 
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
@@ -154,7 +155,7 @@ public class StrokedRectangle2 extends Renderable {
 
 
 
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glLineWidth(10.0f);
 
         GLES20.glDrawElements(GLES20.GL_LINE_LOOP, mIndices.length, GLES20.GL_UNSIGNED_SHORT, mIndicesBuffer);
@@ -209,6 +210,7 @@ public class StrokedRectangle2 extends Renderable {
         mProjectionUniform = GLES20.glGetUniformLocation(mAugmentationProgram, "Projection");
         mColorUniform = GLES20.glGetUniformLocation(mAugmentationProgram, "Color");
         mScaleUniform = GLES20.glGetUniformLocation(mAugmentationProgram, "Scale");
+        mTranslateUniform = GLES20.glGetUniformLocation(mAugmentationProgram, "u_translation");
     }
 
     private static int loadShader(int type, String shaderCode){
