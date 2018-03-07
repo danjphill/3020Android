@@ -600,114 +600,62 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                         ScaleX = Float.valueOf(CurrLine[3]);
                         ScaleY = Float.valueOf(CurrLine[4]);
 
-//                                break;
-//                            case 1:
-//                                a = Float.valueOf(CurrLine[2]);
-//                                b = Float.valueOf(CurrLine[3]);
-//                                break;
-//                            case 2:
-//                                a = Float.valueOf(CurrLine[1]);
-//                                b = Float.valueOf(CurrLine[4]);
-//                                break;
-//                            case 3:
-//                                a = Float.valueOf(CurrLine[1]);
-//                                b = Float.valueOf(CurrLine[3]);
-//                                break;
-//                        }
+
                         Vector2<Float> screenCoordinates = new Vector2<>();
                         screenCoordinates.x = CenterX;
                         screenCoordinates.y = CenterY;
 
-//                        mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
-//                            @Override
-//                            public void onCompletion(boolean success, Vector3<Float> result) {
-//                                if (success) {
-//                                    StrokedCube strokedCube = new StrokedCube();
-//                                    strokedCube.setXScale(0.05f);
-//                                    strokedCube.setYScale(0.05f);
-//                                    strokedCube.setZScale(0.05f);
-//                                    strokedCube.setXTranslate(result.x);
-//                                    strokedCube.setYTranslate(result.y);
-//                                    strokedCube.setZTranslate(result.z);
-//                                    mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
-//                                    Log.d("XYCube", "Added");
-//                                } else {
-//                                    Log.d("XYCube", "Failed");
-//                                }
-//
-//                            }
-//                        });
+
                         final float finalScaleX = ScaleX;
                         final float finalScaleY = ScaleY;
-                        mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
-                            @Override
-                            public void onCompletion(boolean success, Vector3<Float> result) {
-                                if (success) {
-//                                StrokedCube strokedCube = new StrokedCube();
-//                                strokedCube.setXScale(0.05f);
-//                                strokedCube.setYScale(0.05f);
-//                                strokedCube.setZScale(0.05f);
-//                                strokedCube.setXTranslate(result.x);
-//                                strokedCube.setYTranslate(result.y);
-//                                strokedCube.setZTranslate(result.z);
-                                    x = result.x;
-                                    y = result.y;
-                                    z = result.z;
-//                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+                        final int[] try_again_count = {0};
+                        while(try_again_count[0] < 3) {
+                            try_again_count[0]++;
+                            mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
+                                @Override
+                                public void onCompletion(boolean success, Vector3<Float> result) {
+                                    if (success) {
+
+                                        x = result.x;
+                                        y = result.y;
+                                        z = result.z;
+
+                                        StrokedRectangle2 strokedRect = new StrokedRectangle2();
+                                        if (CurrLine[0].contains("Heatsink")) {
+                                            strokedRect.setXScale(finalScaleY * 0.31f);
+                                            strokedRect.setYScale(finalScaleX * 0.31f);
+                                        } else if (CurrLine[0].contains("Memory")) {
+                                            strokedRect.setXScale(finalScaleY * 0.31f);
+                                            strokedRect.setYScale(finalScaleX * 0.31f);
+                                        } else if (CurrLine[0].contains("Card Slot")) {
+                                            strokedRect.setXScale(finalScaleY * 0.31f);
+                                            strokedRect.setYScale(finalScaleX * 0.31f);
+
+                                        }
 
 
-//                        int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
-//                        StrokedCube strokedCube = new StrokedCube();
-//                        strokedCube.setXScale(0.05f);
-//                        strokedCube.setYScale(0.05f);
-//                        strokedCube.setZScale(0.05f);
-//                        float seletcted_x = xValues.get(closestIndex);
-//                        float seletcted_y = yValues.get(closestIndex);
-//                        float seletcted_z = zValues.get(closestIndex);
-//
-//                        strokedCube.setXTranslate(seletcted_x);
-//                        strokedCube.setYTranslate(seletcted_y);
-//                        strokedCube.setZTranslate(seletcted_z);
-//                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
-//                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
+                                        strokedRect.setColor(10, 10, 10);
+                                        strokedRect.setXTranslate(result.x);
+                                        strokedRect.setYTranslate(result.y);
 
-                                    //int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
-                                    StrokedRectangle2 strokedRect = new StrokedRectangle2();
-                                    if(CurrLine[0].contains("Heatsink")) {
-                                        strokedRect.setXScale(finalScaleY * 0.31f);
-                                        strokedRect.setYScale(finalScaleX * 0.31f);
-                                    }else if (CurrLine[0].contains("Memory")){
-                                        strokedRect.setXScale(finalScaleY * 0.10f);
-                                        strokedRect.setYScale(finalScaleX * 0.10f);
-                                    }else if(CurrLine[0].contains("Card Slot")){
-                                        strokedRect.setXScale(finalScaleY * 0.31f);
-                                        strokedRect.setYScale(finalScaleX * 0.31f);
+                                        Log.d("TouchXYZ_PC", result.x + "," + result.y);
+                                        mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
+                                        StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
 
+                                        strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
+
+
+                                        mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
+                                        try_again_count[0] = 3;
+                                        Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                                    } else {
+                                        Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
                                     }
-//                        //strokedCube.setZScale(0.05f);
-//                        float seletcted_x = xValues.get((int)x);
-//                        float seletcted_y = yValues.get((int)y);
-//                        float seletcted_z = zValues.get(closestIndex);
 
-                                    strokedRect.setColor(10,10,10);
-                                    strokedRect.setXTranslate(result.x);
-                                    strokedRect.setYTranslate(result.y);
-//                        strokedCube.setZTranslate(seletcted_z);
-                                    Log.d("TouchXYZ_PC", result.x + "," + result.y);
-                                    mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
-                                    StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
-
-                                    strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
-
-
-                                    mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
-                                    Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
-                                } else {
-                                    Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
                                 }
-                            }
-                        });
 
+                            });
+                        }
 
                     }
                 }
