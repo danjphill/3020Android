@@ -518,8 +518,8 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             boolean has_pcie = false;
             String warning = "none";
 
-            List<Float> xValues = new ArrayList<Float>();
-            List<Float> yValues = new ArrayList<Float>();
+            final List<Float> xValues = new ArrayList<Float>();
+            final List<Float> yValues = new ArrayList<Float>();
             List<Float> zValues = new ArrayList<Float>();
             Class<?> pclUtilClass = null;
 
@@ -564,14 +564,14 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             try {
                 while ((line = bufReader.readLine()) != null) {
 
-                    String[] CurrLine = line.split(",");
+                    final String[] CurrLine = line.split(",");
                     if (CurrLine[0].contains("Memory")) {
                         has_memory = true;
                     } else if (CurrLine[0].contains("Heatsink")) {
                         has_heatsink = true;
                     } else if (CurrLine[0].contains("Card Slot")) {
                         has_pcie = true;
-                    } else if(CurrLine[0].contains("Warn")){
+                    } else if (CurrLine[0].contains("Warn")) {
                         warning = CurrLine[1];
                         Toast.makeText(ArActivity.this, warning, Toast.LENGTH_LONG).show();
                     }
@@ -579,38 +579,44 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                     Log.d("has_heatsink", has_heatsink + "");
                     Log.d("has_memory", has_memory + "");
                     Log.d("has_pcie", has_memory + "");
-                    Log.d("Warning",warning);
+                    Log.d("Warning", warning);
                     displayTutorialText(has_heatsink, has_memory, has_pcie);
 
-                    Log.d(CurrLine[0] + " min_x : ", CurrLine[2]);
-                    Log.d(CurrLine[0] + " max_x : ", CurrLine[1]);
-                    Log.d(CurrLine[0] + " min_y : ", CurrLine[4]);
-                    Log.d(CurrLine[0] + " max_y : ", CurrLine[3]);
+                    if (!CurrLine[0].contains("Warn")) {
+                        Log.d(CurrLine[0] + " centerx : ", CurrLine[1]);
+                        Log.d(CurrLine[0] + " centery : ", CurrLine[2]);
+                        Log.d(CurrLine[0] + " scalex : ", CurrLine[3]);
+                        Log.d(CurrLine[0] + " scaley : ", CurrLine[4]);
 
-                    for (int i = 0; i < 4; i++) {
-                        float a = 0;
-                        float b = 0;
-                        switch (i) {
-                            case 0:
-                                a = Float.valueOf(CurrLine[2]);
-                                b = Float.valueOf(CurrLine[4]);
-                                break;
-                            case 1:
-                                a = Float.valueOf(CurrLine[2]);
-                                b = Float.valueOf(CurrLine[3]);
-                                break;
-                            case 2:
-                                a = Float.valueOf(CurrLine[1]);
-                                b = Float.valueOf(CurrLine[4]);
-                                break;
-                            case 3:
-                                a = Float.valueOf(CurrLine[1]);
-                                b = Float.valueOf(CurrLine[3]);
-                                break;
-                        }
+//                    for (int i = 0; i < 4; i++) {
+                        float CenterX = 0;
+                        float CenterY = 0;
+                        float ScaleX = 0;
+                        float ScaleY = 0;
+//                        switch (i) {
+//                            case 0:
+                        CenterX = Float.valueOf(CurrLine[1]);
+                        CenterY = Float.valueOf(CurrLine[2]);
+                        ScaleX = Float.valueOf(CurrLine[3]);
+                        ScaleY = Float.valueOf(CurrLine[4]);
+
+//                                break;
+//                            case 1:
+//                                a = Float.valueOf(CurrLine[2]);
+//                                b = Float.valueOf(CurrLine[3]);
+//                                break;
+//                            case 2:
+//                                a = Float.valueOf(CurrLine[1]);
+//                                b = Float.valueOf(CurrLine[4]);
+//                                break;
+//                            case 3:
+//                                a = Float.valueOf(CurrLine[1]);
+//                                b = Float.valueOf(CurrLine[3]);
+//                                break;
+//                        }
                         Vector2<Float> screenCoordinates = new Vector2<>();
-                        screenCoordinates.x = a;
-                        screenCoordinates.y = b;
+                        screenCoordinates.x = CenterX;
+                        screenCoordinates.y = CenterY;
 
 //                        mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTracker.ScenePickingCallback() {
 //                            @Override
@@ -631,6 +637,8 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 //
 //                            }
 //                        });
+                        final float finalScaleX = ScaleX;
+                        final float finalScaleY = ScaleY;
                         mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
                             @Override
                             public void onCompletion(boolean success, Vector3<Float> result) {
@@ -646,12 +654,6 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                     y = result.y;
                                     z = result.z;
 //                                mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
-                                    Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
-                                }else {
-                                    Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
-                                }
-                            }
-                        });
 
 
 //                        int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
@@ -669,78 +671,94 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 //                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + "," + seletcted_z);
 //                        mGLRenderer.setRenderablesForKey("" + cubeID++, strokedCube, null);
 
-                        int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
-                        StrokedRectangle2 strokedRect = new StrokedRectangle2();
-                        strokedRect.setXScale(0.05f);
-                        strokedRect.setYScale(0.05f);
+                                    //int closestIndex = getClosestIndex(xValues, yValues, zValues, x, y, z);
+                                    StrokedRectangle2 strokedRect = new StrokedRectangle2();
+                                    if(CurrLine[0].contains("Heatsink")) {
+                                        strokedRect.setXScale(finalScaleY * 0.31f);
+                                        strokedRect.setYScale(finalScaleX * 0.31f);
+                                    }else if (CurrLine[0].contains("Memory")){
+                                        strokedRect.setXScale(finalScaleY * 0.10f);
+                                        strokedRect.setYScale(finalScaleX * 0.10f);
+                                    }else if(CurrLine[0].contains("Card Slot")){
+                                        strokedRect.setXScale(finalScaleY * 0.31f);
+                                        strokedRect.setYScale(finalScaleX * 0.31f);
+
+                                    }
 //                        //strokedCube.setZScale(0.05f);
-                        float seletcted_x = xValues.get(closestIndex);
-                        float seletcted_y = yValues.get(closestIndex);
+//                        float seletcted_x = xValues.get((int)x);
+//                        float seletcted_y = yValues.get((int)y);
 //                        float seletcted_z = zValues.get(closestIndex);
 
-
-                        strokedRect.setXTranslate(seletcted_x);
-                        strokedRect.setYTranslate(seletcted_y);
+                                    strokedRect.setColor(10,10,10);
+                                    strokedRect.setXTranslate(result.x);
+                                    strokedRect.setYTranslate(result.y);
 //                        strokedCube.setZTranslate(seletcted_z);
-                        Log.d("TouchXYZ_PC", seletcted_x + "," + seletcted_y + ",");
-                        mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
-                        StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
+                                    Log.d("TouchXYZ_PC", result.x + "," + result.y);
+                                    mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
+                                    StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
 
-                        strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
+                                    strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
 
 
-                        mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
+                                    mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
+                                    Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                                } else {
+                                    Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
+                                }
+                            }
+                        });
 
 
                     }
-
                 }
 
-                File mydir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/");
-                if (!mydir.exists())
-                    mydir.mkdirs();
-                else
-                    Log.d("error", "dir. already exists");
-                File tempImgdir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/Uploads/");
-                if (!tempImgdir.exists())
-                    tempImgdir.mkdirs();
-                else
-                    Log.d("error", "dir. already exists");
-                GLRenderer.Current = null;
-                GLRenderer.FrameCaptureEnabled = true;
-                while (GLRenderer.Current == null) {
-                    Log.d("ArActivity, ", "Waiting For Result Image");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-                GLRenderer.FrameCaptureEnabled = false;
-                final File imgFile = new File(tempImgdir, "temp_file_result.png");
-                Bitmap Image = GLRenderer.Current;
-                FileOutputStream out = null;
-                try {
+                //}
 
-                    out = new FileOutputStream(imgFile);
-
-                    Image.compress(Bitmap.CompressFormat.PNG, 100, out);
-                    WebServer.path = imgFile.toString();
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    try {
-                        if (out != null) {
-                            out.close();
-                        }
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    LoadingText.setVisibility(View.GONE);
-                }
+//                File mydir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/");
+//                if (!mydir.exists())
+//                    mydir.mkdirs();
+//                else
+//                    Log.d("error", "dir. already exists");
+//                File tempImgdir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/Uploads/");
+//                if (!tempImgdir.exists())
+//                    tempImgdir.mkdirs();
+//                else
+//                    Log.d("error", "dir. already exists");
+//                GLRenderer.Current = null;
+//                GLRenderer.FrameCaptureEnabled = true;
+//                while (GLRenderer.Current == null) {
+//                    Log.d("ArActivity, ", "Waiting For Result Image");
+//                    try {
+//                        Thread.sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//                GLRenderer.FrameCaptureEnabled = false;
+//                final File imgFile = new File(tempImgdir, "temp_file_result.png");
+//                Bitmap Image = GLRenderer.Current;
+//                FileOutputStream out = null;
+//                try {
+//
+//                    out = new FileOutputStream(imgFile);
+//
+//                    Image.compress(Bitmap.CompressFormat.PNG, 100, out);
+//                    WebServer.path = imgFile.toString();
+//
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                } finally {
+//                    try {
+//                        if (out != null) {
+//                            out.close();
+//                        }
+//
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                    LoadingText.setVisibility(View.GONE);
+//                }
 
 
 
