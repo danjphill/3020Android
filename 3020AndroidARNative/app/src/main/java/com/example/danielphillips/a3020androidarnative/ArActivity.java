@@ -511,7 +511,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             //ResultURL.replace("\n","");
             //String ResultFullURL = "http://"+IPManager.GetIPAddress(ArActivity.this)+"/"+ResultURL;
             Log.d("ResultURL", ResultURL);
-            BufferedReader bufReader = new BufferedReader(new StringReader(ResultURL));
+            BufferedReader bufReader1 = new BufferedReader(new StringReader(ResultURL));
             String line = null;
             boolean has_heatsink = false;
             boolean has_memory = false;
@@ -562,7 +562,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             mGLRenderer.removeAllRenderables();
             LoadingText.setText("Adding Data Points...");
             try {
-                while ((line = bufReader.readLine()) != null) {
+                while ((line = bufReader1.readLine()) != null) {
 
                     final String[] CurrLine = line.split(",");
                     if (CurrLine[0].contains("Memory")) {
@@ -580,7 +580,14 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                     Log.d("has_memory", has_memory + "");
                     Log.d("has_pcie", has_memory + "");
                     Log.d("Warning", warning);
-                    displayTutorialText(has_heatsink, has_memory, has_pcie);
+
+                }
+                final int hightlight = displayTutorialText(has_heatsink, has_memory, has_pcie);
+                BufferedReader bufReader = new BufferedReader(new StringReader(ResultURL));
+                while ((line = bufReader.readLine()) != null) {
+                    final String[] CurrLine = line.split(",");
+
+                    Log.d("highlight",hightlight+"");
 
                     if (!CurrLine[0].contains("Warn")) {
                         Log.d(CurrLine[0] + " centerx : ", CurrLine[1]);
@@ -615,7 +622,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                 @Override
                                 public void onCompletion(boolean success, Vector3<Float> result) {
                                     if (success) {
-
+                                        try_again_count[0] = 3;
                                         x = result.x;
                                         y = result.y;
                                         z = result.z;
@@ -624,29 +631,41 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                         if (CurrLine[0].contains("Heatsink")) {
                                             strokedRect.setXScale(finalScaleY * 0.31f);
                                             strokedRect.setYScale(finalScaleX * 0.31f);
+                                            if(hightlight == 0) {
+                                                strokedRect.setColor(0, 0, 1);
+                                                Log.d("ArActivity", "Highlight Heatsink");
+                                            }
                                         } else if (CurrLine[0].contains("Memory")) {
                                             strokedRect.setXScale(finalScaleY * 0.31f);
                                             strokedRect.setYScale(finalScaleX * 0.31f);
+                                            if(hightlight == 1) {
+                                                strokedRect.setColor(0, 0, 1);
+                                                Log.d("ArActivity", "Highlight Memory");
+                                            }
                                         } else if (CurrLine[0].contains("Card Slot")) {
                                             strokedRect.setXScale(finalScaleY * 0.31f);
                                             strokedRect.setYScale(finalScaleX * 0.31f);
+                                            if(hightlight == 2) {
+                                                strokedRect.setColor(0, 0, 1);
+                                                Log.d("ArActivity", "Highlight Card Slot");
+                                            }
 
                                         }
 
 
-                                        strokedRect.setColor(10, 10, 10);
+
                                         strokedRect.setXTranslate(result.x);
                                         strokedRect.setYTranslate(result.y);
 
                                         Log.d("TouchXYZ_PC", result.x + "," + result.y);
                                         mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
-                                        StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
+                                       // StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
 
-                                        strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
+                                        //strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
 
 
-                                        mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
-                                        try_again_count[0] = 3;
+                                        //mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
+
                                         Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
                                     } else {
                                         Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
@@ -720,38 +739,52 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
         }
 
 
-        void displayTutorialText(boolean heatsink, boolean memory, boolean pcie) {
+        int displayTutorialText(boolean heatsink, boolean memory, boolean pcie) {
 
+            //Returns 0 to highlight heatsink
+            //Returns 1 to highlight memory
+            //Returns 2 to highlight pcie
+            //Returns 3 to highlight none
+            TutorialText.setVisibility(View.VISIBLE);
             if (heatsink && memory && pcie) {
                 TutorialText.setText("Please Remove the Heatsink (Step 1 of 3)");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 0;
             } else if (!heatsink && memory && pcie) {
                 TutorialText.setText("Please Remove the Memory (Step 2 of 3)");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 1;
             } else if (!heatsink && !memory && pcie) {
                 TutorialText.setText("Please Remove the PCIE Cards (Step 3 of 3)");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 2;
             } else if (!heatsink && !memory && !pcie) {
                 TutorialText.setText("Tutorial Complete");
                 TutorialNext.setVisibility(View.INVISIBLE);
+                return 3;
             } else if (heatsink && !memory && pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace Memory");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 1;
             } else if (heatsink && !memory && !pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 2;
             } else if (!heatsink && memory && !pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 2;
             } else if (heatsink && memory && !pcie) {
                 TutorialText.setText("Incorrect Component Removed - Replace PCIE Card");
                 TutorialNext.setVisibility(View.VISIBLE);
+                return 2;
             } else {
                 TutorialText.setText("Please Restart Tutorial");
                 TutorialNext.setVisibility(View.INVISIBLE);
                 TutorialReload.setVisibility(View.VISIBLE);
+                return 4;
             }
-            TutorialText.setVisibility(View.VISIBLE);
+
         }
 
 
