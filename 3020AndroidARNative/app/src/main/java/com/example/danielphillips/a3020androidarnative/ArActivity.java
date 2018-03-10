@@ -633,21 +633,21 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                             strokedRect.setYScale(finalScaleX * 0.31f);
                                             if(hightlight == 0) {
                                                 strokedRect.setColor(0, 0, 1);
-                                                Log.d("ArActivity", "Highlight Heatsink");
+                                                Log.d("ArActivity", "Highlight_Heatsink");
                                             }
                                         } else if (CurrLine[0].contains("Memory")) {
                                             strokedRect.setXScale(finalScaleY * 0.31f);
                                             strokedRect.setYScale(finalScaleX * 0.31f);
                                             if(hightlight == 1) {
                                                 strokedRect.setColor(0, 0, 1);
-                                                Log.d("ArActivity", "Highlight Memory");
+                                                Log.d("ArActivity", "Highlight_Memory");
                                             }
                                         } else if (CurrLine[0].contains("Card Slot")) {
                                             strokedRect.setXScale(finalScaleY * 0.31f);
                                             strokedRect.setYScale(finalScaleX * 0.31f);
                                             if(hightlight == 2) {
                                                 strokedRect.setColor(0, 0, 1);
-                                                Log.d("ArActivity", "Highlight Card Slot");
+                                                Log.d("ArActivity", "Highlight_Card_Slot");
                                             }
 
                                         }
