@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
 
         mListView = (ListView) findViewById(R.id.main_list_view);
 
-
+        setTitle("3020 Augmented Reality Tutorial ");
         String[] listItems = {"Tutorial", "Settings"};
 
         ArrayAdapter adapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, listItems);
@@ -32,12 +32,12 @@ public class MainActivity extends AppCompatActivity {
                     case 0:
                         Intent TutorialIntent = new Intent(MainActivity.this, ArActivity.class);
                         startActivity(TutorialIntent);
-                        Toast.makeText(MainActivity.this, i + "", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, i + "", Toast.LENGTH_SHORT).show();
                         break;
                     case 1:
                         Intent SettingsIntent = new Intent(MainActivity.this, Settings.class);
                         startActivity(SettingsIntent);
-                        Toast.makeText(MainActivity.this, i+"", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, i+"", Toast.LENGTH_SHORT).show();
                         break;
                 }
             }

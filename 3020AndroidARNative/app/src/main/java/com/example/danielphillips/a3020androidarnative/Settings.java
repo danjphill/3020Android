@@ -17,7 +17,7 @@ public class Settings extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings);
         Button SaveAddress = (Button) findViewById(R.id.settings_save);
-
+        setTitle("Settings");
         final EditText IPAddress = (EditText) findViewById(R.id.settings_ip_address);
         if (IPManager.GetIPAddress(Settings.this) != null) {
             IPAddress.setText(IPManager.GetIPAddress(Settings.this));

@@ -130,6 +130,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         mProgressDialog = new ProgressDialog(ArActivity.this);
         mProgressDialog.setMessage("Downloading Result");
@@ -175,7 +176,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                                 z = result.z;
                                 mGLRenderer.setRenderablesForKey("" + rectID++, strokedCube, null);
                                 Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
-                            }else{
+                            } else {
                                 Log.d("TouchXYZ_TC", "Failed");
                             }
                         }
@@ -496,190 +497,201 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
             Recognize recognizer = new Recognize();
             //http://10.42.0.188:5002/
             try {
-                ResultURL = recognizer.recognizeImage(IPManager.GetIPAddress(ArActivity.this), "http://" + getDeviceIP() + ":5002/");
-                Log.d("ResultURL", ResultURL);
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                try {
+                    ResultURL = recognizer.recognizeImage(IPManager.GetIPAddress(ArActivity.this), "http://" + getDeviceIP() + ":5002/");
+                    Log.d("ResultURL", ResultURL);
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+
+                }
+
+
+            } catch (Exception e) {
+                Log.e("Recognizer", "FileNotFound");
             }
             return "Executed";
         }
 
-        @Override
-        protected void onPostExecute(String result) {
-            LoadingText.setText("Getting Data Points...");
-            androidWebServer.stop();
-            //ResultURL.replace("\n","");
-            //String ResultFullURL = "http://"+IPManager.GetIPAddress(ArActivity.this)+"/"+ResultURL;
-            Log.d("ResultURL", ResultURL);
-            BufferedReader bufReader1 = new BufferedReader(new StringReader(ResultURL));
-            String line = null;
-            boolean has_heatsink = false;
-            boolean has_memory = false;
-            boolean has_pcie = false;
-            String warning = "none";
 
-            final List<Float> xValues = new ArrayList<Float>();
-            final List<Float> yValues = new ArrayList<Float>();
-            List<Float> zValues = new ArrayList<Float>();
-            Class<?> pclUtilClass = null;
+            @Override
+            protected void onPostExecute (String result) {
+                LoadingText.setText("Getting Data Points...");
+                androidWebServer.stop();
+                //ResultURL.replace("\n","");
+                //String ResultFullURL = "http://"+IPManager.GetIPAddress(ArActivity.this)+"/"+ResultURL;
+                Log.d("ResultURL", ResultURL);
+                BufferedReader bufReader1 = new BufferedReader(new StringReader(ResultURL));
+                String line = null;
+                boolean has_heatsink = false;
+                boolean has_memory = false;
+                boolean has_pcie = false;
+                String warning = "none";
 
-            try {
-                pclUtilClass = Class.forName("com.wikitude.tracker.internal.pcl.PointCloudUtil");
-                Method method = pclUtilClass.getDeclaredMethod("getPointCloudPoints", TrackerManager.class);
-                method.setAccessible(true);
+                final List<Float> xValues = new ArrayList<Float>();
+                final List<Float> yValues = new ArrayList<Float>();
+                List<Float> zValues = new ArrayList<Float>();
+                Class<?> pclUtilClass = null;
 
-
-                Object[] pcl = (Object[]) method.invoke(pclUtilClass, tm);
-
-                int Counter = 0;
+                try {
+                    pclUtilClass = Class.forName("com.wikitude.tracker.internal.pcl.PointCloudUtil");
+                    Method method = pclUtilClass.getDeclaredMethod("getPointCloudPoints", TrackerManager.class);
+                    method.setAccessible(true);
 
 
-                for (Object o : pcl) {
-                    Class<?> clazz = o.getClass();
-                    Field xF = clazz.getField("x");
-                    Field yF = clazz.getField("y");
-                    Field zF = clazz.getField("z");
+                    Object[] pcl = (Object[]) method.invoke(pclUtilClass, tm);
 
-                    float x = (float) xF.get(o);
-                    float y = (float) yF.get(o);
-                    float z = (float) zF.get(o);
-
-                    xValues.add(x);
-                    yValues.add(y);
-                    zValues.add(z);
+                    int Counter = 0;
 
 
-                    Counter++;
+                    for (Object o : pcl) {
+                        Class<?> clazz = o.getClass();
+                        Field xF = clazz.getField("x");
+                        Field yF = clazz.getField("y");
+                        Field zF = clazz.getField("z");
+
+                        float x = (float) xF.get(o);
+                        float y = (float) yF.get(o);
+                        float z = (float) zF.get(o);
+
+                        xValues.add(x);
+                        yValues.add(y);
+                        zValues.add(z);
+
+
+                        Counter++;
 //                        if (Counter % 10 == 0) {
 //
 //
 //                        }
 
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            mGLRenderer.removeAllRenderables();
-            LoadingText.setText("Adding Data Points...");
-            try {
-                while ((line = bufReader1.readLine()) != null) {
-
-                    final String[] CurrLine = line.split(",");
-                    if (CurrLine[0].contains("Memory")) {
-                        has_memory = true;
-                    } else if (CurrLine[0].contains("Heatsink")) {
-                        has_heatsink = true;
-                    } else if (CurrLine[0].contains("Card Slot")) {
-                        has_pcie = true;
-                    } else if (CurrLine[0].contains("Warn")) {
-                        warning = CurrLine[1];
-                        Toast.makeText(ArActivity.this, warning, Toast.LENGTH_LONG).show();
                     }
-
-                    Log.d("has_heatsink", has_heatsink + "");
-                    Log.d("has_memory", has_memory + "");
-                    Log.d("has_pcie", has_memory + "");
-                    Log.d("Warning", warning);
-
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                final int hightlight = displayTutorialText(has_heatsink, has_memory, has_pcie);
-                BufferedReader bufReader = new BufferedReader(new StringReader(ResultURL));
-                while ((line = bufReader.readLine()) != null) {
-                    final String[] CurrLine = line.split(",");
+                mGLRenderer.removeAllRenderables();
+                LoadingText.setText("Adding Data Points...");
 
-                    Log.d("highlight",hightlight+"");
+                try {
+                    try{
+                    while ((line = bufReader1.readLine()) != null) {
 
-                    if (!CurrLine[0].contains("Warn")) {
-                        Log.d(CurrLine[0] + " centerx : ", CurrLine[1]);
-                        Log.d(CurrLine[0] + " centery : ", CurrLine[2]);
-                        Log.d(CurrLine[0] + " scalex : ", CurrLine[3]);
-                        Log.d(CurrLine[0] + " scaley : ", CurrLine[4]);
-
-//                    for (int i = 0; i < 4; i++) {
-                        float CenterX = 0;
-                        float CenterY = 0;
-                        float ScaleX = 0;
-                        float ScaleY = 0;
-//                        switch (i) {
-//                            case 0:
-                        CenterX = Float.valueOf(CurrLine[1]);
-                        CenterY = Float.valueOf(CurrLine[2]);
-                        ScaleX = Float.valueOf(CurrLine[3]);
-                        ScaleY = Float.valueOf(CurrLine[4]);
-
-
-                        Vector2<Float> screenCoordinates = new Vector2<>();
-                        screenCoordinates.x = CenterX;
-                        screenCoordinates.y = CenterY;
-
-
-                        final float finalScaleX = ScaleX;
-                        final float finalScaleY = ScaleY;
-                        final int[] try_again_count = {0};
-                        while(try_again_count[0] < 3) {
-                            try_again_count[0]++;
-                            mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
-                                @Override
-                                public void onCompletion(boolean success, Vector3<Float> result) {
-                                    if (success) {
-                                        try_again_count[0] = 3;
-                                        x = result.x;
-                                        y = result.y;
-                                        z = result.z;
-
-                                        StrokedRectangle2 strokedRect = new StrokedRectangle2();
-                                        if (CurrLine[0].contains("Heatsink")) {
-                                            strokedRect.setXScale(finalScaleY * 0.31f);
-                                            strokedRect.setYScale(finalScaleX * 0.31f);
-                                            if(hightlight == 0) {
-                                                strokedRect.setColor(0, 0, 1);
-                                                Log.d("ArActivity", "Highlight_Heatsink");
-                                            }
-                                        } else if (CurrLine[0].contains("Memory")) {
-                                            strokedRect.setXScale(finalScaleY * 0.31f);
-                                            strokedRect.setYScale(finalScaleX * 0.31f);
-                                            if(hightlight == 1) {
-                                                strokedRect.setColor(0, 0, 1);
-                                                Log.d("ArActivity", "Highlight_Memory");
-                                            }
-                                        } else if (CurrLine[0].contains("Card Slot")) {
-                                            strokedRect.setXScale(finalScaleY * 0.31f);
-                                            strokedRect.setYScale(finalScaleX * 0.31f);
-                                            if(hightlight == 2) {
-                                                strokedRect.setColor(0, 0, 1);
-                                                Log.d("ArActivity", "Highlight_Card_Slot");
-                                            }
-
-                                        }
-
-
-
-                                        strokedRect.setXTranslate(result.x);
-                                        strokedRect.setYTranslate(result.y);
-
-                                        Log.d("TouchXYZ_PC", result.x + "," + result.y);
-                                        mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
-                                       // StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
-
-                                        //strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
-
-
-                                        //mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
-
-                                        Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
-                                    } else {
-                                        Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
-                                    }
-
-                                }
-
-                            });
+                        final String[] CurrLine = line.split(",");
+                        if (CurrLine[0].contains("Memory")) {
+                            has_memory = true;
+                        } else if (CurrLine[0].contains("Heatsink")) {
+                            has_heatsink = true;
+                        } else if (CurrLine[0].contains("Card Slot")) {
+                            has_pcie = true;
+                        } else if (CurrLine[0].contains("Warn")) {
+                            warning = CurrLine[1];
+                            Toast.makeText(ArActivity.this, warning, Toast.LENGTH_LONG).show();
                         }
 
-                    }
-                }
+                        Log.d("has_heatsink", has_heatsink + "");
+                        Log.d("has_memory", has_memory + "");
+                        Log.d("has_pcie", has_memory + "");
+                        Log.d("Warning", warning);
 
-                //}
+                    }
+                    final int hightlight = displayTutorialText(has_heatsink, has_memory, has_pcie);
+                    BufferedReader bufReader = new BufferedReader(new StringReader(ResultURL));
+                    while ((line = bufReader.readLine()) != null) {
+                        final String[] CurrLine = line.split(",");
+
+                        Log.d("highlight", hightlight + "");
+
+                        if (!CurrLine[0].contains("Warn")) {
+                            Log.d(CurrLine[0] + " centerx : ", CurrLine[1]);
+                            Log.d(CurrLine[0] + " centery : ", CurrLine[2]);
+                            Log.d(CurrLine[0] + " scalex : ", CurrLine[3]);
+                            Log.d(CurrLine[0] + " scaley : ", CurrLine[4]);
+
+//                    for (int i = 0; i < 4; i++) {
+                            float CenterX = 0;
+                            float CenterY = 0;
+                            float ScaleX = 0;
+                            float ScaleY = 0;
+//                        switch (i) {
+//                            case 0:
+                            CenterX = Float.parseFloat(CurrLine[1] + ".00");
+                            CenterY = Float.parseFloat(CurrLine[2] + ".00");
+                            ScaleX = Float.parseFloat(CurrLine[3]);
+                            ScaleY = Float.parseFloat(CurrLine[4]);
+
+                            Log.d("CenterX", CenterX + "");
+                            Log.d("CenterY", CenterY + "");
+                            Vector2<Float> screenCoordinates = new Vector2<>();
+
+
+                            final float finalScaleX = ScaleX;
+                            final float finalScaleY = ScaleY;
+                            final int[] try_again_count = {0};
+                            while (try_again_count[0] < 100) {
+                                screenCoordinates.x = CenterX - try_again_count[0];
+                                screenCoordinates.y = CenterY - try_again_count[0];
+                                try_again_count[0]++;
+                                Log.d("Try_Again", try_again_count[0] + "");
+                                mInstantTracker.convertScreenCoordinateToPointCloudCoordinate(screenCoordinates, new InstantTrackerScenePickingCallback() {
+                                    @Override
+                                    public void onCompletion(boolean success, Vector3<Float> result) {
+                                        if (success) {
+                                            try_again_count[0] = 100;
+                                            x = result.x;
+                                            y = result.y;
+                                            z = result.z;
+
+                                            StrokedRectangle2 strokedRect = new StrokedRectangle2();
+                                            if (CurrLine[0].contains("Heatsink")) {
+                                                strokedRect.setXScale(finalScaleY * 0.31f);
+                                                strokedRect.setYScale(finalScaleX * 0.31f);
+                                                if (hightlight == 0) {
+                                                    strokedRect.setColor(0, 0, 1);
+                                                    Log.d("ArActivity", "Highlight_Heatsink");
+                                                }
+                                            } else if (CurrLine[0].contains("Memory")) {
+                                                strokedRect.setXScale(finalScaleY * 0.31f);
+                                                strokedRect.setYScale(finalScaleX * 0.31f);
+                                                if (hightlight == 1) {
+                                                    strokedRect.setColor(0, 0, 1);
+                                                    Log.d("ArActivity", "Highlight_Memory");
+                                                }
+                                            } else if (CurrLine[0].contains("Card Slot")) {
+                                                strokedRect.setXScale(finalScaleY * 0.31f);
+                                                strokedRect.setYScale(finalScaleX * 0.31f);
+                                                if (hightlight == 2) {
+                                                    strokedRect.setColor(0, 0, 1);
+                                                    Log.d("ArActivity", "Highlight_Card_Slot");
+                                                }
+
+                                            }
+
+
+                                            strokedRect.setXTranslate(result.x);
+                                            strokedRect.setYTranslate(result.y);
+
+                                            Log.d("TouchXYZ_PC", result.x + "," + result.y);
+                                            mGLRenderer.setRenderablesForKey("" + rectID++, strokedRect, null);
+                                            // StrokedRectangle strokedRectangle = (StrokedRectangle) mGLRenderer.getRenderableForKey("");
+
+                                            //strokedRectangle = new StrokedRectangle(StrokedRectangle.Type.STANDARD);
+
+
+                                            //mGLRenderer.setRenderablesForKey("", strokedRectangle, null);
+
+                                            Log.d("TouchXYZ_TC", result.x + "," + result.y + "," + result.z);
+                                        } else {
+                                            Log.d("TouchXYZ_TC", "Failed: " + result.x + "," + result.y + "," + result.z);
+                                        }
+
+                                    }
+
+                                });
+                            }
+
+                        }
+                    }
+
+                    //}
 
 //                File mydir = new File(Environment.getExternalStorageDirectory() + "/ECNG3020Temp/");
 //                if (!mydir.exists())
@@ -728,15 +740,18 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 //                }
 
 
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            LoadingText.setVisibility(View.GONE);
+            }catch (java.lang.ArrayIndexOutOfBoundsException e){
+            Log.e("Recognizer","ArrayOutOfBounds");
+            Toast.makeText(ArActivity.this, "Recognition Failed...Move Camera Closer", Toast.LENGTH_SHORT).show();
+            TutorialText.setVisibility(View.INVISIBLE);
         }
+
+                LoadingText.setVisibility(View.GONE);
+            }
 
 
         int displayTutorialText(boolean heatsink, boolean memory, boolean pcie) {
@@ -920,7 +935,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
 //            for (int i = 0; i < cubeID; ++i) {
 //                mGLRenderer.removeRenderablesForKey("" + i);
 //            }
-            for (int y = 0; y < (rectID+cubeID); ++y) {
+            for (int y = 0; y < (rectID + cubeID); ++y) {
                 mGLRenderer.removeRenderablesForKey("" + y);
             }
 
@@ -1014,18 +1029,18 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                     strokedCube.projectionMatrix = null;
                     strokedCube.viewMatrix = null;
                 }
-            }catch (java.lang.ClassCastException e){
+            } catch (java.lang.ClassCastException e) {
                 e.printStackTrace();
             }
         }
         for (int i = 0; i < rectID; ++i) {
-            try{
-            StrokedRectangle2 strokedCube = (StrokedRectangle2) mGLRenderer.getRenderableForKey("" + i);
-            if (strokedCube != null) {
-                strokedCube.projectionMatrix = null;
-                strokedCube.viewMatrix = null;
-            }
-            }catch (java.lang.ClassCastException e){
+            try {
+                StrokedRectangle2 strokedCube = (StrokedRectangle2) mGLRenderer.getRenderableForKey("" + i);
+                if (strokedCube != null) {
+                    strokedCube.projectionMatrix = null;
+                    strokedCube.viewMatrix = null;
+                }
+            } catch (java.lang.ClassCastException e) {
                 e.printStackTrace();
             }
         }
@@ -1065,6 +1080,7 @@ public class ArActivity extends Activity implements InstantTrackerListener, Exte
                 if (isCameraLandscape()) {
                     setDefaultDeviceOrientationLandscape(true);
                 }
+
 
                 int imageSensorRotation = mWikitudeCamera.getImageSensorRotation();
                 if (imageSensorRotation != 0) {
